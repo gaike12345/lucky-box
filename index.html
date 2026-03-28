@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>幸运盲盒 · 抽奖券系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs2-fix@0.0.1/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, 'Segoe UI', 'PingFang SC', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .app-container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 40px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+        .dashboard { display: flex; flex-wrap: wrap; }
+        .admin-panel {
+            flex: 1.3;
+            min-width: 400px;
+            background: #fff;
+            padding: 28px 24px;
+            border-right: 1px solid rgba(102, 126, 234, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .lottery-panel {
+            flex: 2;
+            padding: 32px 28px;
+            background: linear-gradient(145deg, #fffaf5 0%, #fff1f5 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .login-overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(12px);
+            z-index: 3000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .login-card {
+            background: white;
+            border-radius: 56px;
+            padding: 40px 32px;
+            width: 90%;
+            max-width: 440px;
+            text-align: center;
+            box-shadow: 0 30px 50px rgba(0,0,0,0.3);
+        }
+        .phone-input {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 1rem;
+            border: 2px solid #e2e8ff;
+            border-radius: 60px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .phone-input:focus { border-color: #667eea; outline: none; }
+        .login-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 60px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+        }
+        .prize-marquee {
+            width: 100%;
+            background: rgba(255,245,235,0.95);
+            border-radius: 80px;
+            padding: 14px 20px;
+            margin-bottom: 28px;
+            overflow: hidden;
+        }
+        .marquee-track {
+            display: flex;
+            gap: 24px;
+            animation: scroll 22s linear infinite;
+            width: max-content;
+        }
+        .marquee-item {
+            background: white;
+            padding: 8px 20px;
+            border-radius: 50px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            min-width: 90px;
+        }
+        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-48%); } }
+        .lottery-box { text-align: center; width: 100%; max-width: 620px; }
+        .user-info {
+            background: rgba(102,126,234,0.12);
+            border-radius: 60px;
+            padding: 8px 20px;
+            margin-bottom: 18px;
+            display: inline-block;
+            color: #5a67d8;
+        }
+        .remain-chances {
+            font-size: 1.3rem;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            display: inline-block;
+            padding: 10px 32px;
+            border-radius: 60px;
+            margin-bottom: 24px;
+            font-weight: 700;
+        }
+        .rolling-container {
+            background: white;
+            border-radius: 56px;
+            padding: 32px 20px;
+            margin: 20px 0;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
+            cursor: pointer;
+        }
+        .rolling-display {
+            background: #fef9f0;
+            border-radius: 40px;
+            padding: 28px 16px;
+            min-height: 240px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .rolling-icon { font-size: 5rem; }
+        .rolling-name { font-size: 1.5rem; font-weight: 800; margin-top: 18px; color: #764ba2; }
+        .rolling-active .rolling-icon { animation: pulseShake 0.12s infinite; }
+        @keyframes pulseShake {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08) rotate(3deg); }
+        }
+        .draw-button {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            color: white;
+            border: none;
+            padding: 16px 48px;
+            border-radius: 60px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            cursor: pointer;
+            margin: 20px 0;
+            width: 80%;
+        }
+        .draw-button:disabled { opacity: 0.55; cursor: not-allowed; }
+        .result-area {
+            background: rgba(255,248,240,0.95);
+            border-radius: 48px;
+            padding: 18px;
+            min-height: 85px;
+        }
+        .prize-table-container {
+            background: #fafbff;
+            border-radius: 28px;
+            padding: 6px;
+            margin-bottom: 20px;
+            max-height: 360px;
+            overflow-y: auto;
+        }
+        .prize-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+        .prize-table th {
+            background: linear-gradient(135deg, #667eea, #7c5fc0);
+            padding: 12px 6px;
+            color: white;
+        }
+        .prize-table td { padding: 10px 6px; border-bottom: 1px solid #eef2ff; }
+        .btn-primary, .btn-secondary, .btn-danger, .btn-success {
+            padding: 8px 16px;
+            border-radius: 40px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 4px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .btn-secondary { background: #eef2ff; color: #4c51bf; }
+        .btn-danger { background: #ff8787; color: white; }
+        .btn-success { background: #69db7e; color: #2c3e2f; }
+        .qrcode-container {
+            background: linear-gradient(145deg, #5f6fdf, #8b5bb4);
+            border-radius: 32px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 24px;
+        }
+        .qrcode-content {
+            background: white;
+            border-radius: 24px;
+            padding: 18px;
+            margin: 12px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+        }
+        #qrcode {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 180px;
+            height: 180px;
+        }
+        #qrcode img, #qrcode canvas {
+            width: 180px !important;
+            height: 180px !important;
+            border-radius: 16px;
+        }
+        .share-link {
+            background: rgba(0,0,0,0.3);
+            border-radius: 40px;
+            padding: 12px;
+            font-size: 0.7rem;
+            word-break: break-all;
+            color: white;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+        .wechat-tip {
+            background: #1aad19;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .win-modal-content {
+            background: white;
+            border-radius: 56px;
+            max-width: 420px;
+            width: 90%;
+            padding: 36px 24px;
+            text-align: center;
+        }
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 12px;
+            margin: 20px 0;
+            max-height: 380px;
+            overflow-y: auto;
+        }
+        .icon-option {
+            font-size: 2rem;
+            text-align: center;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 24px;
+            background: #f1f4ff;
+        }
+        .toast-notification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293bdd;
+            backdrop-filter: blur(12px);
+            color: white;
+            padding: 12px 28px;
+            border-radius: 60px;
+            z-index: 4000;
+            font-size: 0.9rem;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            border-radius: 48px;
+            max-width: 500px;
+            width: 90%;
+            padding: 28px;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            font-size: 1.6rem;
+            cursor: pointer;
+        }
+        .history-record {
+            background: white;
+            border-radius: 32px;
+            padding: 14px;
+            margin-top: 20px;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid #fff;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .admin-badge {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .deploy-success {
+            background: #c8e6c9;
+            border-left: 4px solid #4caf50;
+            padding: 12px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            font-size: 0.8rem;
+        }
+        @media (max-width: 860px) {
+            .admin-panel { min-width: 100%; border-right: none; border-bottom: 1px solid #ddd; }
+            .rolling-display { min-height: 180px; }
+            .rolling-icon { font-size: 3rem; }
+            .rolling-name { font-size: 1.1rem; }
+            .draw-button { width: 90%; font-size: 1.1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <div class="dashboard">
+        <div class="admin-panel" id="adminPanel">
+            <h3 style="margin-bottom: 20px;">
+                🎫 盲盒管理后台 
+                <span class="admin-badge"><i class="fas fa-crown"></i> 管理员模式</span>
+            </h3>
+            <div class="deploy-success" id="deploySuccess" style="display:none;">
+                <i class="fas fa-check-circle"></i> 
+                <strong>✅ 部署成功！</strong><br>
+                当前网址: <span id="currentUrl" style="word-break:break-all;"></span><br>
+                微信扫码下方二维码即可参与抽奖
+            </div>
+            <div style="background:#f0f3ff; border-radius:24px; padding:16px; margin-bottom:20px;">
+                <div><strong>📊 数据导出</strong></div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;">
+                    <input type="date" id="startDate" style="padding:8px 12px; border-radius:40px; border:1px solid #ccc;">
+                    <input type="date" id="endDate" style="padding:8px 12px; border-radius:40px; border:1px solid #ccc;">
+                    <button class="btn-primary" id="exportExcelBtn"><i class="fas fa-file-excel"></i> 导出Excel</button>
+                </div>
+            </div>
+            <div class="prize-table-container">
+                <table class="prize-table"><thead>运转<th>图示</th><th>奖品名</th><th>权重</th><th>操作</th> </thead><tbody id="prizeTableBody"></tbody> </table>
+            </div>
+            <button class="btn-secondary" id="addPrizeBtn" style="width:100%; margin-bottom:16px;">+ 添加奖品</button>
+            <div style="background:#f0f3ff; border-radius:24px; padding:16px; margin-bottom:16px;">
+                <div><strong>🎟️ 抽奖券管理</strong></div>
+                <div style="display:flex; gap:8px; margin:12px 0;">
+                    <input type="tel" id="searchPhone" placeholder="输入手机号" style="flex:1; padding:10px; border-radius:40px; border:1px solid #ccc;">
+                    <button class="btn-secondary" id="searchUserBtn">🔍查询</button>
+                </div>
+                <div id="userPhoneInfo" style="background:white; border-radius:20px; padding:10px; font-size:0.75rem; display:none;"></div>
+                <div style="display:flex; gap:8px; margin-top:12px;">
+                    <input type="number" id="addChanceAmount" value="1" min="1" style="width:80px; padding:8px; border-radius:40px;">
+                    <button class="btn-primary" id="addUserChanceBtn">➕ 发放抽奖券</button>
+                    <button class="btn-danger" id="resetUserChanceBtn">🔄 清空券</button>
+                </div>
+                <div style="margin-top:10px; font-size:0.7rem; background:#e6f7e6; padding:6px; border-radius:20px;">💡 用户初始抽奖券为0，需管理员发放</div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px;">
+                <button class="btn-primary" id="saveConfigBtn">💾 保存配置并生成二维码</button>
+                <button class="btn-secondary" id="resetDefaultBtn">🔄 重置奖品</button>
+                <button class="btn-success" id="batchAddTicketsBtn">🎁 批量+1券</button>
+            </div>
+            <div class="qrcode-container">
+                <div><h4 style="color:white;"><i class="fas fa-ticket-alt"></i> 幸运盲盒抽奖</h4><p style="color:rgba(255,255,255,0.9);">微信扫码/长按识别参与抽奖</p></div>
+                <div class="qrcode-content">
+                    <div id="qrcode"></div>
+                </div>
+                <div class="share-link" id="shareLinkDisplay">点击「保存配置」生成链接和二维码</div>
+                <div class="url-box" id="urlBox" style="display:none;"></div>
+                <div style="display:flex; gap:8px; justify-content:center; margin-top:12px;">
+                    <button class="btn-secondary" id="copyLinkBtn" style="background:rgba(255,255,255,0.2);color:white;">📋 复制链接</button>
+                    <button class="btn-secondary" id="downloadQrBtn" style="background:rgba(255,255,255,0.2);color:white;">💾 保存二维码</button>
+                </div>
+                <div id="wechatTip" class="wechat-tip" style="display:none;">
+                    <i class="fab fa-weixin"></i> 长按二维码识别进入抽奖
+                </div>
+            </div>
+        </div>
+        <div class="lottery-panel" id="lotteryPanel" style="display: none;">
+            <div class="prize-marquee"><div class="marquee-track" id="marqueeTrack"></div></div>
+            <div class="lottery-box">
+                <div class="user-info" id="userPhoneDisplay"><i class="fas fa-mobile-alt"></i> 未登录</div>
+                <div class="remain-chances" id="remainChances">🎫 抽奖券: 0</div>
+                <div class="rolling-container" id="rollingContainer">
+                    <div class="rolling-display" id="rollingDisplay">
+                        <div class="rolling-icon" id="rollingIcon">🎁</div>
+                        <div class="rolling-name" id="rollingName">请先登录</div>
+                    </div>
+                </div>
+                <button class="draw-button" id="drawBtn" disabled>✨ 消耗1张券抽奖 ✨</button>
+                <div class="result-area" id="resultArea">💎 登录后即可参与抽奖</div>
+                <div id="historyArea" class="history-record" style="display:none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="loginModal" class="login-overlay" style="display: none;">
+    <div class="login-card">
+        <div class="login-icon">📱</div>
+        <div class="login-title">手机号登录</div>
+        <input type="tel" id="loginPhone" class="phone-input" placeholder="请输入11位手机号" maxlength="11">
+        <button class="login-btn" id="submitLoginBtn">登录参与抽奖</button>
+        <div class="login-note">⚠️ 新用户抽奖券为0，请联系管理员领取抽奖券</div>
+    </div>
+</div>
+<div id="winModal" class="modal"><div class="win-modal-content"><span class="modal-close" id="closeWinModalBtn">&times;</span><div class="login-icon" id="winIcon">🏆</div><div style="font-size:1.8rem; font-weight:bold;">🎉 恭喜中奖 🎉</div><div id="winPrizeName" style="font-size:1.4rem; color:#667eea; margin:16px 0;"></div><button class="btn-primary" id="closeWinModalBtn2" style="width:100%;">收下惊喜</button></div></div>
+<div id="iconModal" class="modal"><div class="modal-content"><span class="modal-close" id="closeIconModal">&times;</span><h4>🎨 选择图标</h4><div class="icon-grid" id="iconGrid"></div></div></div>
+
+<script>
+    // 二维码生成
+    function generateRealQRCode(text, elementId) {
+        const container = document.getElementById(elementId);
+        if (!container) return false;
+        container.innerHTML = '';
+        try {
+            new QRCode(elementId, {
+                text: text,
+                width: 180,
+                height: 180,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            return true;
+        } catch(e) {
+            container.innerHTML = '<div style="font-size:12px;">二维码生成失败</div>';
+            return false;
+        }
+    }
+    
+    // 存储key
+    const STORAGE_USERS = 'blindbox_ticket_v10';
+    const STORAGE_CONFIGS = 'blindbox_configs_v10';
+    const STORAGE_LAST_CONFIG = 'blindbox_last_config_v10';
+    const STORAGE_SESSION = 'blindbox_session_v10';
+    
+    const DEFAULT_PRIZES = [
+        { name: "🏆 黄金大奖", weight: 5, imgType: "icon", iconValue: "🏆" },
+        { name: "🎧 高端耳机", weight: 10, imgType: "icon", iconValue: "🎧" },
+        { name: "🍫 巧克力礼盒", weight: 20, imgType: "icon", iconValue: "🍫" },
+        { name: "🧸 毛绒公仔", weight: 30, imgType: "icon", iconValue: "🧸" },
+        { name: "💝 幸运券", weight: 35, imgType: "icon", iconValue: "💝" },
+        { name: "😢 谢谢参与", weight: 100, imgType: "icon", iconValue: "😢" }
+    ];
+    
+    const ICON_LIBRARY = ["🎁","🎉","🏆","💎","👑","🍫","🍭","🧸","📱","💻","⌚","💄","👟","🧢","🎧","📷","✈️","🚗","🏠","🐱","🐶","🌸","⭐","🔥","🍕","🍔","🍦","🍩","🎈","💰","🔮","🕹️","🎮","📚","⚽","🏀","🎾","🥇","🥈","🥉","🎨","🍪","🍬","🍷","💍","👗","🧥","💡","🌈","💝","💖","💘","🎵","🎶","🔔","🎤","✨","🌟","💫","🍀","🎯"];
+    
+    let prizeList = [];
+    let currentConfigId = null;
+    let currentUser = null;
+    let isRolling = false;
+    let rollInterval = null;
+    let clientIP = '';
+    let activeEditIdx = null;
+    let currentSearchPhone = '';
+    let currentShareLink = '';
+    let isUserMode = false;
+    
+    function showToast(msg, duration = 2500) {
+        let toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.innerText = msg;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), duration);
+    }
+    
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]);
+    }
+    
+    async function getClientIP() {
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            clientIP = data.ip || 'unknown';
+        } catch(e) {
+            clientIP = 'local_' + Date.now();
+        }
+        return clientIP;
+    }
+    
+    function getUsers() { return JSON.parse(localStorage.getItem(STORAGE_USERS) || '{}'); }
+    function saveUsers(users) { localStorage.setItem(STORAGE_USERS, JSON.stringify(users)); }
+    
+    function getUserData(phone, createIfNotExist = true) {
+        let users = getUsers();
+        if (!users[phone] && createIfNotExist) {
+            users[phone] = {
+                phone: phone,
+                ip: clientIP,
+                registerTime: new Date().toISOString(),
+                drawRecord: [],
+                tickets: 0
+            };
+            saveUsers(users);
+        }
+        return users[phone];
+    }
+    
+    function addTickets(phone, amount) {
+        if (amount <= 0) return false;
+        let users = getUsers();
+        if (!users[phone]) {
+            users[phone] = {
+                phone: phone,
+                ip: clientIP,
+                registerTime: new Date().toISOString(),
+                drawRecord: [],
+                tickets: amount
+            };
+        } else {
+            users[phone].tickets = (users[phone].tickets || 0) + amount;
+        }
+        saveUsers(users);
+        if (currentUser && currentUser.phone === phone) {
+            currentUser.tickets = users[phone].tickets;
+            updateTicketDisplay();
+        }
+        return true;
+    }
+    
+    function consumeTicketAndRecord(phone, prize, configId) {
+        let users = getUsers();
+        if (!users[phone] || (users[phone].tickets || 0) <= 0) return false;
+        users[phone].tickets = (users[phone].tickets || 0) - 1;
+        if (!users[phone].drawRecord) users[phone].drawRecord = [];
+        users[phone].drawRecord.push({
+            time: new Date().toISOString(),
+            prize: prize.name,
+            configId: configId
+        });
+        saveUsers(users);
+        if (currentUser && currentUser.phone === phone) {
+            currentUser.tickets = users[phone].tickets;
+            updateTicketDisplay();
+        }
+        return users[phone].tickets;
+    }
+    
+    function clearTickets(phone) {
+        let users = getUsers();
+        if (users[phone]) {
+            users[phone].tickets = 0;
+            saveUsers(users);
+            if (currentUser && currentUser.phone === phone) {
+                currentUser.tickets = 0;
+                updateTicketDisplay();
+            }
+            return true;
+        }
+        return false;
+    }
+    
+    function saveLoginSession(phone, tickets) {
+        sessionStorage.setItem(STORAGE_SESSION, JSON.stringify({ phone: phone, ip: clientIP, tickets: tickets }));
+    }
+    
+    function restoreLoginSession() {
+        if (!isUserMode) return false;
+        let saved = sessionStorage.getItem(STORAGE_SESSION);
+        if (!saved) return false;
+        try {
+            let data = JSON.parse(saved);
+            let user = getUsers()[data.phone];
+            if (user) {
+                currentUser = { phone: data.phone, ip: data.ip, tickets: user.tickets || 0 };
+                updateUIAfterLogin();
+                return true;
+            }
+        } catch(e) {}
+        return false;
+    }
+    
+    function updateUIAfterLogin() {
+        if (!currentUser) return;
+        document.getElementById('userPhoneDisplay').innerHTML = `<i class="fas fa-mobile-alt"></i> ${currentUser.phone}`;
+        updateTicketDisplay();
+        document.getElementById('loginModal').style.display = 'none';
+        let user = getUsers()[currentUser.phone];
+        if (user && user.drawRecord && user.drawRecord.length) {
+            let last = user.drawRecord[user.drawRecord.length - 1];
+            let historyDiv = document.getElementById('historyArea');
+            historyDiv.innerHTML = `<div><strong>📜 最近中奖</strong></div><div>🎁 ${escapeHtml(last.prize)}<br><small>${new Date(last.time).toLocaleString()}</small></div>`;
+            historyDiv.style.display = 'block';
+        }
+    }
+    
+    function updateTicketDisplay() {
+        if (!currentUser) return;
+        let tickets = currentUser.tickets || 0;
+        document.getElementById('remainChances').innerHTML = `🎫 抽奖券: ${tickets}`;
+        let drawBtn = document.getElementById('drawBtn');
+        drawBtn.disabled = tickets <= 0;
+        if (tickets <= 0) document.getElementById('resultArea').innerHTML = '🎫 暂无抽奖券，请联系管理员领取';
+        else document.getElementById('resultArea').innerHTML = '✨ 点击抽奖，消耗1张券 ✨';
+    }
+    
+    async function userLogin(phone) {
+        if (!phone || !/^1[3-9]\d{9}$/.test(phone)) { showToast('请输入正确的11位手机号'); return false; }
+        let btn = document.getElementById('submitLoginBtn');
+        let originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span> 登录中';
+        await getClientIP();
+        let user = getUserData(phone, true);
+        user.ip = clientIP;
+        saveUsers(getUsers());
+        currentUser = { phone: phone, ip: clientIP, tickets: user.tickets || 0 };
+        saveLoginSession(phone, currentUser.tickets);
+        updateUIAfterLogin();
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        showToast(`登录成功，当前抽奖券: ${currentUser.tickets}`);
+        return true;
+    }
+    
+    function drawByWeight(prizes) {
+        let valid = prizes.filter(p => (p.weight || 0) > 0);
+        if (valid.length === 0) return { ...prizes[0] };
+        let total = valid.reduce((s, p) => s + (p.weight || 0), 0);
+        let rand = Math.random() * total;
+        let acc = 0;
+        for (let p of valid) { acc += p.weight; if (rand <= acc) return { ...p }; }
+        return { ...valid[0] };
+    }
+    
+    function updateRollingDisplay(prize) {
+        let iconDiv = document.getElementById('rollingIcon');
+        let nameDiv = document.getElementById('rollingName');
+        iconDiv.innerHTML = `<div style="font-size:4rem;">${prize.iconValue || '🎁'}</div>`;
+        nameDiv.innerText = escapeHtml(prize.name);
+    }
+    
+    function startRollingAnimation(prizes, finalPrize, callback) {
+        if (isRolling) return;
+        isRolling = true;
+        let container = document.getElementById('rollingContainer');
+        container.classList.add('rolling-active');
+        document.getElementById('drawBtn').disabled = true;
+        let startTime = Date.now();
+        let duration = 2200;
+        rollInterval = setInterval(() => {
+            if (Date.now() - startTime < duration) {
+                let randomPrize = prizes[Math.floor(Math.random() * prizes.length)];
+                updateRollingDisplay(randomPrize);
+            } else {
+                clearInterval(rollInterval);
+                rollInterval = null;
+                container.classList.remove('rolling-active');
+                updateRollingDisplay(finalPrize);
+                isRolling = false;
+                if (callback) callback(finalPrize);
+            }
+        }, 70);
+    }
+    
+    async function performDraw() {
+        if (!currentUser) { showToast('请先登录'); document.getElementById('loginModal').style.display = 'flex'; return; }
+        if ((currentUser.tickets || 0) <= 0) { showToast('抽奖券不足'); return; }
+        if (!prizeList || prizeList.length === 0) { showToast('奖品配置异常'); return; }
+        if (isRolling) { showToast('抽奖进行中'); return; }
+        let finalPrize = drawByWeight(prizeList);
+        startRollingAnimation(prizeList, finalPrize, (prize) => {
+            let remaining = consumeTicketAndRecord(currentUser.phone, prize, currentConfigId);
+            currentUser.tickets = remaining;
+            updateTicketDisplay();
+            document.getElementById('resultArea').innerHTML = `<div style="display:flex; align-items:center; justify-content:center; gap:12px;"><div style="font-size:2rem;">${prize.iconValue || '🏆'}</div><div style="font-weight:bold;">✨ ${escapeHtml(prize.name)} ✨</div></div>`;
+            showToast(`恭喜获得：${prize.name}！剩余券:${remaining}`);
+            document.getElementById('winIcon').innerHTML = prize.iconValue || '🏆';
+            document.getElementById('winPrizeName').innerText = escapeHtml(prize.name);
+            document.getElementById('winModal').style.display = 'flex';
+        });
+    }
+    
+    function renderPrizeTable() {
+        let tbody = document.getElementById('prizeTableBody');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        prizeList.forEach((prize, idx) => {
+            let row = tbody.insertRow();
+            let cell0 = row.insertCell(0);
+            cell0.innerHTML = `<div style="font-size:1.8rem; cursor:pointer;" data-idx="${idx}">${prize.iconValue || '🎁'}</div>`;
+            cell0.querySelector('div')?.addEventListener('click', () => openIconSelector(idx));
+            let cell1 = row.insertCell(1);
+            cell1.innerHTML = `<input type="text" value="${escapeHtml(prize.name)}" data-idx="${idx}" class="prize-name-input" style="width:130px; border-radius:30px; padding:6px;">`;
+            let cell2 = row.insertCell(2);
+            cell2.innerHTML = `<input type="number" value="${prize.weight}" data-idx="${idx}" class="prize-weight-input" style="width:70px; border-radius:30px;" min="0">`;
+            let cell3 = row.insertCell(3);
+            cell3.innerHTML = `<button class="remove-btn" data-idx="${idx}" style="padding:4px 12px; background:#ff8787; color:white; border:none; border-radius:30px; cursor:pointer;">✖ 删除</button>`;
+        });
+        document.querySelectorAll('.prize-name-input').forEach(inp => inp.addEventListener('change', (e) => { let idx = parseInt(inp.dataset.idx); if(!isNaN(idx)) prizeList[idx].name = inp.value; updateMarquee(); }));
+        document.querySelectorAll('.prize-weight-input').forEach(inp => inp.addEventListener('change', (e) => { let idx = parseInt(inp.dataset.idx); if(!isNaN(idx)) prizeList[idx].weight = Math.max(0, parseInt(inp.value)||0); }));
+        document.querySelectorAll('.remove-btn').forEach(btn => btn.addEventListener('click', (e) => { let idx = parseInt(btn.dataset.idx); if(prizeList.length>1){ prizeList.splice(idx,1); renderPrizeTable(); updateMarquee(); showToast('已删除'); } else showToast('至少保留一个'); }));
+    }
+    
+    function openIconSelector(idx) { activeEditIdx = idx; let modal = document.getElementById('iconModal'); let grid = document.getElementById('iconGrid'); grid.innerHTML = ''; ICON_LIBRARY.forEach(icon => { let div = document.createElement('div'); div.className = 'icon-option'; div.innerText = icon; div.onclick = () => { prizeList[activeEditIdx].imgType = 'icon'; prizeList[activeEditIdx].iconValue = icon; renderPrizeTable(); updateMarquee(); modal.style.display = 'none'; showToast('图标已更新'); }; grid.appendChild(div); }); modal.style.display = 'flex'; }
+    
+    function resetDefaultPrizes() { prizeList = JSON.parse(JSON.stringify(DEFAULT_PRIZES)); renderPrizeTable(); updateMarquee(); showToast('已重置奖品'); }
+    
+    function updateMarquee() { let track = document.getElementById('marqueeTrack'); if(!track) return; track.innerHTML = ''; let displayList = [...prizeList, ...prizeList]; displayList.forEach(p => { let div = document.createElement('div'); div.className = 'marquee-item'; div.innerHTML = `<div style="font-size:1.8rem;">${p.iconValue || '🎁'}</div><span>${escapeHtml(p.name.length>6?p.name.slice(0,6)+'..':p.name)}</span>`; track.appendChild(div); }); }
+    
+    function saveConfiguration() {
+        let newId = 'cfg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+        let allConfigs = JSON.parse(localStorage.getItem(STORAGE_CONFIGS) || '{}');
+        allConfigs[newId] = { id: newId, prizes: JSON.parse(JSON.stringify(prizeList)), createTime: new Date().toISOString() };
+        localStorage.setItem(STORAGE_CONFIGS, JSON.stringify(allConfigs));
+        currentConfigId = newId;
+        localStorage.setItem(STORAGE_LAST_CONFIG, newId);
+        
+        let baseUrl = window.location.href.split('?')[0];
+        let link = baseUrl + '?config=' + newId;
+        currentShareLink = link;
+        
+        document.getElementById('shareLinkDisplay').innerHTML = `<i class="fas fa-link"></i> ${link.substring(0,55)}...`;
+        document.getElementById('shareLinkDisplay').setAttribute('data-link', link);
+        document.getElementById('urlBox').innerHTML = `<i class="fas fa-link"></i> ${link}`;
+        document.getElementById('urlBox').style.display = 'block';
+        document.getElementById('deploySuccess').style.display = 'block';
+        document.getElementById('currentUrl').innerText = link;
+        
+        generateRealQRCode(link, 'qrcode');
+        showToast('✅ 配置已保存，二维码已生成！');
+        return link;
+    }
+    
+    function copyShareLink() { let link = currentShareLink || document.getElementById('shareLinkDisplay').getAttribute('data-link'); if(link && link.includes('http')){ navigator.clipboard.writeText(link); showToast('链接已复制'); } else showToast('请先保存配置'); }
+    function downloadQRCode() { let qrDiv = document.getElementById('qrcode'); let img = qrDiv.querySelector('img') || qrDiv.querySelector('canvas'); if(img){ let link = document.createElement('a'); link.download = 'lucky_qrcode.png'; link.href = img.src; link.click(); showToast('二维码已保存'); } else showToast('二维码未生成'); }
+    function searchUser() { let phone = document.getElementById('searchPhone').value.trim(); if(!phone) return; currentSearchPhone = phone; let users = getUsers(); let infoDiv = document.getElementById('userPhoneInfo'); if(users[phone]){ let user=users[phone]; infoDiv.innerHTML = `<strong>📱 ${phone}</strong><br>🎫 剩余券: ${user.tickets||0}<br>📊 抽奖次数: ${(user.drawRecord||[]).length}`; } else infoDiv.innerHTML = `<strong>📱 ${phone}</strong><br>❌ 未注册，发放券将自动创建`; infoDiv.style.display='block'; }
+    function addTicketsToSearchedUser() { if(!currentSearchPhone){ showToast('请先查询'); return; } let amount = parseInt(document.getElementById('addChanceAmount').value)||1; if(amount<=0) return; addTickets(currentSearchPhone, amount); showToast(`已发放 ${amount} 张券`); searchUser(); }
+    function clearSearchedUserTickets() { if(!currentSearchPhone) return; clearTickets(currentSearchPhone); showToast(`已清空 ${currentSearchPhone} 的券`); searchUser(); }
+    function batchAddTickets() { if(!confirm('为所有已注册用户+1券?')) return; let users = getUsers(); let count=0; for(let phone in users){ users[phone].tickets = (users[phone].tickets||0)+1; count++; } saveUsers(users); if(currentUser && users[currentUser.phone]) currentUser.tickets = users[currentUser.phone].tickets; updateTicketDisplay(); showToast(`已为${count}位用户各+1券`); if(currentSearchPhone) searchUser(); }
+    function exportToExcel() { let users=getUsers(); let data=[]; for(let phone in users){ let u=users[phone]; if(u.drawRecord && u.drawRecord.length) u.drawRecord.forEach(r=>data.push({手机号:phone,IP地址:u.ip,注册时间:u.registerTime,抽奖时间:r.time,中奖奖品:r.prize,剩余抽奖券:u.tickets})); else data.push({手机号:phone,IP地址:u.ip,注册时间:u.registerTime,抽奖时间:'未抽奖',中奖奖品:'无',剩余抽奖券:u.tickets}); } if(!data.length){showToast('无数据');return;} let ws=XLSX.utils.json_to_sheet(data); let wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'抽奖记录'); XLSX.writeFile(wb,`抽奖记录_${new Date().toISOString().slice(0,19).replace(/:/g, '-')}.xlsx`); showToast(`导出${data.length}条`); }
+    
+    async function init() {
+        await getClientIP();
+        let urlParams = new URLSearchParams(window.location.search);
+        let cfgId = urlParams.get('config');
+        
+        if (cfgId) {
+            isUserMode = true;
+            document.getElementById('adminPanel').style.display = 'none';
+            document.getElementById('lotteryPanel').style.display = 'flex';
+            let allConfigs = JSON.parse(localStorage.getItem(STORAGE_CONFIGS) || '{}');
+            if (allConfigs[cfgId]) { prizeList = JSON.parse(JSON.stringify(allConfigs[cfgId].prizes)); currentConfigId = cfgId; } 
+            else { prizeList = JSON.parse(JSON.stringify(DEFAULT_PRIZES)); showToast('使用默认奖品配置'); }
+            updateMarquee();
+            let restored = restoreLoginSession();
+            if (!restored) document.getElementById('loginModal').style.display = 'flex';
+            document.getElementById('submitLoginBtn').onclick = async () => { let phone = document.getElementById('loginPhone').value.trim(); await userLogin(phone); };
+            document.getElementById('drawBtn').onclick = performDraw;
+            if (navigator.userAgent.includes('MicroMessenger')) {
+                let tip = document.createElement('div');
+                tip.className = 'wechat-tip';
+                tip.style.display = 'inline-flex';
+                tip.style.marginTop = '20px';
+                tip.innerHTML = '<i class="fab fa-weixin"></i> 微信内可直接参与抽奖';
+                document.querySelector('.lottery-box').appendChild(tip);
+            }
+        } else {
+            isUserMode = false;
+            document.getElementById('adminPanel').style.display = 'block';
+            document.getElementById('lotteryPanel').style.display = 'none';
+            
+            let lastId = localStorage.getItem(STORAGE_LAST_CONFIG);
+            let allConfigs = JSON.parse(localStorage.getItem(STORAGE_CONFIGS) || '{}');
+            if (lastId && allConfigs[lastId]) { 
+                prizeList = JSON.parse(JSON.stringify(allConfigs[lastId].prizes)); 
+                currentConfigId = lastId; 
+                let link = window.location.href.split('?')[0] + '?config=' + lastId;
+                currentShareLink = link;
+                document.getElementById('shareLinkDisplay').innerHTML = `<i class="fas fa-link"></i> ${link.substring(0,55)}...`;
+                document.getElementById('shareLinkDisplay').setAttribute('data-link', link);
+                document.getElementById('urlBox').innerHTML = `<i class="fas fa-link"></i> ${link}`;
+                document.getElementById('urlBox').style.display = 'block';
+                document.getElementById('deploySuccess').style.display = 'block';
+                document.getElementById('currentUrl').innerText = link;
+                generateRealQRCode(link, 'qrcode');
+            } else { 
+                prizeList = JSON.parse(JSON.stringify(DEFAULT_PRIZES)); 
+            }
+            renderPrizeTable(); 
+            updateMarquee();
+            
+            document.getElementById('saveConfigBtn').onclick = saveConfiguration;
+            document.getElementById('resetDefaultBtn').onclick = resetDefaultPrizes;
+            document.getElementById('batchAddTicketsBtn').onclick = batchAddTickets;
+            document.getElementById('copyLinkBtn').onclick = copyShareLink;
+            document.getElementById('downloadQrBtn').onclick = downloadQRCode;
+            document.getElementById('addPrizeBtn').onclick = () => { prizeList.push({ name: "新奖品", weight: 10, imgType: "icon", iconValue: "🎁" }); renderPrizeTable(); updateMarquee(); showToast('添加奖品'); };
+            document.getElementById('searchUserBtn').onclick = searchUser;
+            document.getElementById('addUserChanceBtn').onclick = addTicketsToSearchedUser;
+            document.getElementById('resetUserChanceBtn').onclick = clearSearchedUserTickets;
+            document.getElementById('exportExcelBtn').onclick = exportToExcel;
+            
+            if (navigator.userAgent.includes('MicroMessenger')) {
+                document.getElementById('wechatTip').style.display = 'inline-flex';
+            }
+        }
+        
+        document.getElementById('closeWinModalBtn')?.addEventListener('click',()=>document.getElementById('winModal').style.display='none');
+        document.getElementById('closeWinModalBtn2')?.addEventListener('click',()=>document.getElementById('winModal').style.display='none');
+        document.getElementById('closeIconModal')?.addEventListener('click',()=>document.getElementById('iconModal').style.display='none');
+    }
+    
+    window.addEventListener('beforeunload',()=>{ if(rollInterval) clearInterval(rollInterval); });
+    init();
+</script>
+</body>
+</html>
