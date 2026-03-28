@@ -2,494 +2,675 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>幸运盲盒 · 抽奖券系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>幸运盲盒 · 抽奖系统</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs2-fix@0.0.1/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: system-ui, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 16px; }
-        .app-container { max-width: 1400px; margin: 0 auto; background: rgba(255,255,255,0.96); border-radius: 32px; box-shadow: 0 25px 50px rgba(0,0,0,0.25); overflow: hidden; }
-        .dashboard { display: flex; flex-wrap: wrap; }
-        .admin-panel { flex: 1; min-width: 380px; padding: 24px; max-height: 90vh; overflow-y: auto; }
-        .lottery-panel { flex: 1.5; padding: 32px; background: linear-gradient(145deg, #fffaf5 0%, #fff1f5 100%); display: flex; flex-direction: column; align-items: center; }
-        .login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(12px); z-index: 3000; display: flex; justify-content: center; align-items: center; }
-        .login-card { background: white; border-radius: 40px; padding: 36px; width: 90%; max-width: 400px; text-align: center; }
-        .phone-input { width: 100%; padding: 14px; font-size: 1rem; border: 2px solid #e2e8ff; border-radius: 40px; margin-bottom: 16px; text-align: center; }
-        .phone-input:focus { border-color: #667eea; outline: none; }
-        .login-btn { background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; padding: 14px; border-radius: 40px; font-size: 1rem; font-weight: bold; cursor: pointer; width: 100%; }
-        .prize-marquee { width: 100%; background: rgba(255,245,235,0.95); border-radius: 60px; padding: 12px; margin-bottom: 24px; overflow: hidden; }
-        .marquee-track { display: flex; gap: 20px; animation: scroll 22s linear infinite; width: max-content; }
-        .marquee-item { background: white; padding: 8px 16px; border-radius: 40px; display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 80px; }
-        @keyframes scroll { 0% { transform: translateX(0); } 100% { transform: translateX(-48%); } }
-        .lottery-box { text-align: center; width: 100%; max-width: 500px; }
-        .user-info { background: rgba(102,126,234,0.12); border-radius: 40px; padding: 8px 16px; margin-bottom: 16px; display: inline-block; color: #5a67d8; }
-        .remain-chances { font-size: 1.2rem; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; display: inline-block; padding: 10px 28px; border-radius: 40px; margin-bottom: 20px; font-weight: 700; }
-        .rolling-container { background: white; border-radius: 40px; padding: 28px; margin: 16px 0; box-shadow: 0 15px 30px rgba(0,0,0,0.1); cursor: pointer; }
-        .rolling-display { background: #fef9f0; border-radius: 32px; padding: 24px; min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-        .rolling-icon { font-size: 4rem; }
-        .rolling-name { font-size: 1.3rem; font-weight: 800; margin-top: 14px; color: #764ba2; }
-        .rolling-active .rolling-icon { animation: pulseShake 0.12s infinite; }
-        @keyframes pulseShake { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08) rotate(3deg); } }
-        .draw-button { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; border: none; padding: 14px 40px; border-radius: 40px; font-size: 1.1rem; font-weight: bold; cursor: pointer; margin: 16px 0; width: 80%; }
-        .draw-button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .result-area { background: rgba(255,248,240,0.95); border-radius: 32px; padding: 16px; min-height: 70px; }
-        .prize-table-container { background: #fafbff; border-radius: 20px; padding: 8px; margin-bottom: 16px; max-height: 300px; overflow-y: auto; }
-        .prize-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-        .prize-table th { background: linear-gradient(135deg, #667eea, #7c5fc0); padding: 10px 6px; color: white; }
-        .prize-table td { padding: 8px 6px; border-bottom: 1px solid #eef2ff; }
-        .btn-primary, .btn-secondary, .btn-danger, .btn-success { padding: 8px 14px; border-radius: 30px; border: none; font-weight: 600; cursor: pointer; margin: 4px; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 12px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.2); overflow: hidden; }
+        
+        /* 头部 */
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); padding: 20px; color: white; text-align: center; }
+        .header h1 { font-size: 1.5rem; margin-bottom: 4px; }
+        .header p { font-size: 0.85rem; opacity: 0.9; }
+        .header-actions { margin-top: 12px; display: flex; gap: 8px; justify-content: center; }
+        .header-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 16px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; }
+        .header-btn:hover { background: rgba(255,255,255,0.3); }
+        .header-btn.active { background: white; color: #667eea; }
+        
+        /* API 状态 */
+        .api-status { padding: 8px 16px; background: #f0f9ff; font-size: 0.75rem; display: flex; align-items: center; gap: 8px; }
+        .api-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
+        .api-status .dot.offline { background: #ef4444; }
+        
+        /* 内容区域 */
+        .content { padding: 16px; min-height: 400px; }
+        
+        /* 用户面板 */
+        .user-panel { text-align: center; }
+        .user-info-card { background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 16px; padding: 16px; color: white; margin-bottom: 16px; }
+        .user-info-card .phone { font-size: 1.1rem; margin-bottom: 4px; }
+        .user-info-card .tickets { font-size: 2rem; font-weight: bold; }
+        .user-info-card .label { font-size: 0.75rem; opacity: 0.9; }
+        
+        /* 抽奖区域 */
+        .draw-area { background: #fef3f2; border-radius: 20px; padding: 24px; margin-bottom: 16px; }
+        .prize-display { background: white; border-radius: 16px; padding: 32px; margin-bottom: 16px; min-height: 150px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .prize-display .icon { font-size: 4rem; transition: transform 0.1s; }
+        .prize-display.rolling .icon { animation: shake 0.1s infinite; }
+        @keyframes shake { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.1) rotate(5deg); } }
+        .prize-display .name { font-size: 1.2rem; font-weight: bold; color: #764ba2; margin-top: 12px; }
+        .draw-btn { background: linear-gradient(135deg, #f093fb, #f5576c); color: white; border: none; padding: 16px 48px; border-radius: 30px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; transition: transform 0.2s; }
+        .draw-btn:hover:not(:disabled) { transform: scale(1.02); }
+        .draw-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .draw-hint { font-size: 0.8rem; color: #888; margin-top: 12px; }
+        
+        /* 历史记录 */
+        .history-section { margin-top: 16px; }
+        .section-title { font-size: 0.9rem; font-weight: bold; color: #333; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .history-list { max-height: 200px; overflow-y: auto; }
+        .history-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: #f8fafc; border-radius: 12px; margin-bottom: 8px; }
+        .history-item .icon { font-size: 1.5rem; }
+        .history-item .info { flex: 1; }
+        .history-item .name { font-weight: 600; font-size: 0.85rem; }
+        .history-item .time { font-size: 0.7rem; color: #888; }
+        
+        /* 管理员面板 */
+        .admin-panel { display: none; }
+        .admin-panel.active { display: block; }
+        .admin-section { background: #f8fafc; border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+        .admin-section h3 { font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .admin-btn { padding: 8px 16px; border-radius: 20px; border: none; font-weight: 600; cursor: pointer; margin: 4px; font-size: 0.8rem; }
         .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
-        .btn-secondary { background: #eef2ff; color: #4c51bf; }
-        .btn-danger { background: #ff8787; color: white; }
-        .btn-success { background: #69db7e; color: #2c3e2f; }
-        .qrcode-container { background: linear-gradient(145deg, #5f6fdf, #8b5bb4); border-radius: 24px; padding: 16px; text-align: center; margin-top: 20px; }
-        .qrcode-content { background: white; border-radius: 20px; padding: 14px; margin: 10px 0; display: flex; justify-content: center; align-items: center; min-height: 180px; }
-        #qrcode { display: flex; justify-content: center; align-items: center; width: 160px; height: 160px; }
-        #qrcode img, #qrcode canvas { width: 160px !important; height: 160px !important; border-radius: 12px; }
-        .share-link { background: rgba(0,0,0,0.3); border-radius: 30px; padding: 10px; font-size: 0.7rem; word-break: break-all; color: white; margin: 8px 0; cursor: pointer; }
-        .api-status { background: #e3f2fd; border-radius: 16px; padding: 8px; margin-bottom: 12px; font-size: 0.75rem; }
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: center; }
-        .modal-content { background: white; border-radius: 32px; max-width: 450px; width: 90%; padding: 24px; }
-        .modal-close { position: absolute; top: 16px; right: 20px; font-size: 1.4rem; cursor: pointer; }
-        .toast-notification { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1e293bdd; color: white; padding: 12px 24px; border-radius: 40px; z-index: 4000; font-size: 0.9rem; }
-        .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.6s linear infinite; }
+        .btn-secondary { background: #e2e8f0; color: #4a5568; }
+        .btn-danger { background: #fecaca; color: #dc2626; }
+        .btn-success { background: #bbf7d0; color: #16a34a; }
+        
+        /* 奖品表格 */
+        .prize-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+        .prize-table th, .prize-table td { padding: 8px 4px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .prize-table th { background: #667eea; color: white; }
+        .prize-table input { width: 100%; padding: 4px 8px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.75rem; }
+        
+        /* 输入框 */
+        .input-group { display: flex; gap: 8px; margin-bottom: 12px; }
+        .input-group input { flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 20px; font-size: 0.85rem; }
+        .input-group input:focus { outline: none; border-color: #667eea; }
+        
+        /* 统计卡片 */
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+        .stat-card { background: white; border-radius: 12px; padding: 12px; text-align: center; }
+        .stat-card .value { font-size: 1.3rem; font-weight: bold; color: #667eea; }
+        .stat-card .label { font-size: 0.7rem; color: #888; }
+        
+        /* 二维码区域 */
+        .qr-section { text-align: center; background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 16px; color: white; }
+        .qr-section h4 { margin-bottom: 8px; }
+        #qrcode { display: inline-block; background: white; padding: 8px; border-radius: 12px; }
+        .qr-link { background: rgba(255,255,255,0.2); border-radius: 20px; padding: 8px 16px; margin-top: 12px; font-size: 0.75rem; word-break: break-all; }
+        
+        /* 登录弹窗 */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 16px; }
+        .modal.show { display: flex; }
+        .modal-card { background: white; border-radius: 24px; padding: 24px; width: 100%; max-width: 360px; text-align: center; }
+        .modal-card h3 { margin-bottom: 16px; }
+        .modal-card input { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 24px; font-size: 1rem; margin-bottom: 12px; text-align: center; }
+        .modal-card input:focus { border-color: #667eea; outline: none; }
+        .modal-card .btn { width: 100%; padding: 12px; border-radius: 24px; border: none; font-size: 1rem; font-weight: bold; cursor: pointer; }
+        .modal-card .btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .modal-card .btn-secondary { background: #f1f5f9; color: #64748b; margin-top: 8px; }
+        .modal-card .hint { font-size: 0.75rem; color: #888; margin-top: 12px; }
+        
+        /* 中奖弹窗 */
+        .win-modal .prize-icon { font-size: 5rem; margin: 16px 0; }
+        .win-modal .prize-name { font-size: 1.5rem; font-weight: bold; color: #667eea; margin-bottom: 16px; }
+        
+        /* Toast */
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 24px; font-size: 0.85rem; z-index: 2000; }
+        
+        /* 用户模式隐藏管理面板 */
+        body.user-mode .admin-only { display: none !important; }
+        
+        /* 加载动画 */
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        @media (max-width: 800px) { .admin-panel { min-width: 100%; } .lottery-panel { min-width: 100%; } }
     </style>
 </head>
 <body>
-<div class="app-container">
-    <div class="dashboard">
-        <div class="admin-panel" id="adminPanel">
-            <h3 style="margin-bottom: 16px;">🎫 盲盒管理后台 <span style="background:#667eea;color:white;padding:4px 10px;border-radius:20px;font-size:0.7rem;">管理员</span></h3>
-            <div class="api-status"><i class="fas fa-cloud"></i> API状态: <span id="apiStatusText">检测中...</span></div>
-            <div style="background:#f0f3ff;border-radius:20px;padding:12px;margin-bottom:16px;">
-                <div><strong>📊 数据管理</strong></div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;">
-                    <button class="btn-primary" id="exportExcelBtn"><i class="fas fa-file-excel"></i> 导出</button>
-                    <button class="btn-secondary" id="refreshStatsBtn"><i class="fas fa-sync"></i> 刷新统计</button>
-                </div>
-                <div id="statsDisplay" style="background:white;border-radius:12px;padding:8px;font-size:0.75rem;"></div>
-            </div>
-            <div class="prize-table-container">
-                <table class="prize-table"><thead><tr><th>图示</th><th>奖品</th><th>权重</th><th>操作</th></tr></thead><tbody id="prizeTableBody"></tbody></table>
-            </div>
-            <button class="btn-secondary" id="addPrizeBtn" style="width:100%;margin-bottom:12px;">+ 添加奖品</button>
-            <div style="background:#f0f3ff;border-radius:20px;padding:12px;margin-bottom:12px;">
-                <div><strong>🎟️ 抽奖券管理</strong></div>
-                <div style="display:flex;gap:8px;margin:10px 0;">
-                    <input type="tel" id="searchPhone" placeholder="手机号" style="flex:1;padding:8px;border-radius:30px;border:1px solid #ccc;">
-                    <button class="btn-secondary" id="searchUserBtn">🔍</button>
-                </div>
-                <div id="userPhoneInfo" style="background:white;border-radius:16px;padding:8px;font-size:0.7rem;display:none;"></div>
-                <div style="display:flex;gap:8px;margin-top:10px;">
-                    <input type="number" id="addChanceAmount" value="1" min="1" style="width:60px;padding:6px;border-radius:30px;">
-                    <button class="btn-primary" id="addUserChanceBtn">➕发放</button>
-                    <button class="btn-danger" id="resetUserChanceBtn">清空</button>
-                </div>
-            </div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-                <button class="btn-primary" id="saveConfigBtn">💾 保存配置</button>
-                <button class="btn-secondary" id="resetDefaultBtn">🔄 重置</button>
-                <button class="btn-success" id="batchAddTicketsBtn">🎁批量+1</button>
-            </div>
-            <div class="qrcode-container">
-                <h4 style="color:white;"><i class="fas fa-ticket-alt"></i> 幸运盲盒抽奖</h4>
-                <div class="qrcode-content"><div id="qrcode"></div></div>
-                <div class="share-link" id="shareLinkDisplay">点击「保存配置」生成二维码</div>
-                <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
-                    <button class="btn-secondary" id="copyLinkBtn" style="background:rgba(255,255,255,0.2);color:white;">📋 复制</button>
-                    <button class="btn-secondary" id="downloadQrBtn" style="background:rgba(255,255,255,0.2);color:white;">💾 保存</button>
-                </div>
-            </div>
+<div class="container">
+    <!-- 头部 -->
+    <div class="header">
+        <h1>🎰 幸运盲盒</h1>
+        <p>扫码参与抽奖，赢取惊喜大奖！</p>
+        <div class="header-actions">
+            <button class="header-btn active" id="userModeBtn" onclick="switchMode('user')">🎲 用户抽奖</button>
+            <button class="header-btn" id="adminModeBtn" onclick="switchMode('admin')">⚙️ 管理后台</button>
         </div>
-        <div class="lottery-panel" id="lotteryPanel" style="display:none;">
-            <div class="prize-marquee"><div class="marquee-track" id="marqueeTrack"></div></div>
-            <div class="lottery-box">
-                <div class="user-info" id="userPhoneDisplay"><i class="fas fa-mobile-alt"></i> 未登录</div>
-                <div class="remain-chances" id="remainChances">🎫 券: 0</div>
-                <div class="rolling-container" id="rollingContainer">
-                    <div class="rolling-display" id="rollingDisplay">
-                        <div class="rolling-icon" id="rollingIcon">🎁</div>
-                        <div class="rolling-name" id="rollingName">请先登录</div>
+    </div>
+    
+    <!-- API 状态 -->
+    <div class="api-status">
+        <span class="dot" id="statusDot"></span>
+        <span>API: <span id="statusText">检测中...</span></span>
+    </div>
+    
+    <!-- 内容区域 -->
+    <div class="content">
+        <!-- 用户抽奖面板 -->
+        <div class="user-panel" id="userPanel">
+            <!-- 未登录状态 -->
+            <div id="notLoggedIn">
+                <div style="text-align:center;padding:40px 20px;">
+                    <div style="font-size:4rem;margin-bottom:16px;">🎁</div>
+                    <h3 style="margin-bottom:8px;">欢迎来到幸运盲盒</h3>
+                    <p style="color:#888;font-size:0.85rem;margin-bottom:24px;">登录后即可参与抽奖</p>
+                    <button class="draw-btn" onclick="showLoginModal()">立即登录</button>
+                </div>
+            </div>
+            
+            <!-- 已登录状态 -->
+            <div id="loggedIn" style="display:none;">
+                <!-- 用户信息卡片 -->
+                <div class="user-info-card">
+                    <div class="label">当前账号</div>
+                    <div class="phone" id="displayPhone">-</div>
+                    <div class="tickets" id="displayTickets">0</div>
+                    <div class="label">张抽奖券</div>
+                </div>
+                
+                <!-- 抽奖区域 -->
+                <div class="draw-area">
+                    <div class="prize-display" id="prizeDisplay">
+                        <div class="icon">🎁</div>
+                        <div class="name">点击下方按钮抽奖</div>
+                    </div>
+                    <button class="draw-btn" id="drawBtn" onclick="performDraw()">✨ 开始抽奖 ✨</button>
+                    <div class="draw-hint" id="drawHint">每次抽奖消耗1张券</div>
+                </div>
+                
+                <!-- 抽奖记录 -->
+                <div class="history-section">
+                    <div class="section-title"><i class="fas fa-history"></i> 我的抽奖记录</div>
+                    <div class="history-list" id="historyList">
+                        <div style="text-align:center;color:#888;padding:20px;font-size:0.85rem;">暂无记录</div>
                     </div>
                 </div>
-                <button class="draw-button" id="drawBtn" disabled>✨ 抽奖 ✨</button>
-                <div class="result-area" id="resultArea">💎 登录后参与抽奖</div>
+            </div>
+        </div>
+        
+        <!-- 管理员面板 -->
+        <div class="admin-panel" id="adminPanel">
+            <!-- 统计数据 -->
+            <div class="admin-section">
+                <h3><i class="fas fa-chart-bar"></i> 数据统计</h3>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="value" id="statUsers">0</div>
+                        <div class="label">用户数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="statDraws">0</div>
+                        <div class="label">抽奖次数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="value" id="statTickets">0</div>
+                        <div class="label">剩余券数</div>
+                    </div>
+                </div>
+                <button class="admin-btn btn-secondary" onclick="refreshStats()"><i class="fas fa-sync"></i> 刷新</button>
+                <button class="admin-btn btn-success" onclick="exportData()"><i class="fas fa-download"></i> 导出数据</button>
+            </div>
+            
+            <!-- 奖品管理 -->
+            <div class="admin-section admin-only">
+                <h3><i class="fas fa-gift"></i> 奖品配置</h3>
+                <div style="max-height:200px;overflow-y:auto;">
+                    <table class="prize-table">
+                        <thead><tr><th>图标</th><th>奖品名</th><th>权重</th><th>操作</th></tr></thead>
+                        <tbody id="prizeTableBody"></tbody>
+                    </table>
+                </div>
+                <button class="admin-btn btn-secondary" onclick="addPrize()" style="margin-top:8px;">+ 添加奖品</button>
+                <button class="admin-btn btn-secondary" onclick="resetPrizes()">重置默认</button>
+            </div>
+            
+            <!-- 抽奖券管理 -->
+            <div class="admin-section admin-only">
+                <h3><i class="fas fa-ticket-alt"></i> 抽奖券管理</h3>
+                <div class="input-group">
+                    <input type="tel" id="inputPhone" placeholder="输入手机号" maxlength="11">
+                    <button class="admin-btn btn-primary" onclick="queryUser()">查询</button>
+                </div>
+                <div id="queryResult" style="background:white;border-radius:12px;padding:12px;margin-bottom:12px;display:none;">
+                    <div style="font-size:0.8rem;"><strong>手机号:</strong> <span id="resultPhone"></span></div>
+                    <div style="font-size:0.8rem;"><strong>抽奖券:</strong> <span id="resultTickets"></span> 张</div>
+                </div>
+                <div class="input-group">
+                    <input type="number" id="inputAmount" placeholder="数量" value="1" min="1" style="width:80px;flex:none;">
+                    <button class="admin-btn btn-success" onclick="addTickets()">➕ 发放</button>
+                    <button class="admin-btn btn-danger" onclick="reduceTickets()">➖ 扣减</button>
+                </div>
+                <button class="admin-btn btn-primary" onclick="batchAddTickets()">🎁 为所有用户 +1 券</button>
+            </div>
+            
+            <!-- 二维码 -->
+            <div class="qr-section admin-only">
+                <h4>📱 扫码参与抽奖</h4>
+                <div id="qrcode"></div>
+                <div class="qr-link" id="qrLink">点击下方按钮生成</div>
+                <div style="margin-top:12px;">
+                    <button class="admin-btn btn-secondary" style="background:rgba(255,255,255,0.2);color:white;" onclick="generateQRCode()">生成二维码</button>
+                    <button class="admin-btn btn-secondary" style="background:rgba(255,255,255,0.2);color:white;" onclick="copyLink()">复制链接</button>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<div id="loginModal" class="login-overlay" style="display:none;">
-    <div class="login-card">
-        <div style="font-size:3rem;">📱</div>
-        <div style="font-size:1.2rem;font-weight:bold;margin:12px 0;">手机号登录</div>
-        <input type="tel" id="loginPhone" class="phone-input" placeholder="请输入11位手机号" maxlength="11">
-        <button class="login-btn" id="submitLoginBtn">登录参与抽奖</button>
-        <div style="font-size:0.75rem;color:#888;margin-top:12px;">新用户券为0，请联系管理员领取</div>
+<!-- 用户登录弹窗 -->
+<div class="modal" id="loginModal">
+    <div class="modal-card">
+        <h3>📱 手机号登录</h3>
+        <input type="tel" id="loginPhone" placeholder="请输入11位手机号" maxlength="11">
+        <button class="btn btn-primary" onclick="userLogin()">登录参与抽奖</button>
+        <button class="btn btn-secondary" onclick="closeModal('loginModal')">取消</button>
+        <div class="hint">新用户登录后抽奖券为0，请联系管理员领取</div>
     </div>
 </div>
 
-<div id="winModal" class="modal">
-    <div style="background:white;border-radius:40px;max-width:380px;width:90%;padding:32px;text-align:center;">
-        <div id="winIcon" style="font-size:4rem;">🏆</div>
-        <div style="font-size:1.6rem;font-weight:bold;margin:12px 0;">🎉 恭喜中奖 🎉</div>
-        <div id="winPrizeName" style="font-size:1.3rem;color:#667eea;margin-bottom:16px;"></div>
-        <button class="btn-primary" id="closeWinModalBtn" style="width:100%;">收下惊喜</button>
+<!-- 管理员登录弹窗 -->
+<div class="modal" id="adminLoginModal">
+    <div class="modal-card">
+        <h3>🔐 管理员登录</h3>
+        <input type="password" id="adminPassword" placeholder="请输入管理员密码">
+        <button class="btn btn-primary" onclick="adminLogin()">登录</button>
+        <button class="btn btn-secondary" onclick="closeModal('adminLoginModal')">取消</button>
     </div>
 </div>
 
-<div id="iconModal" class="modal">
-    <div class="modal-content">
-        <span class="modal-close" id="closeIconModal">&times;</span>
-        <h4>🎨 选择图标</h4>
-        <div id="iconGrid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:16px;max-height:300px;overflow-y:auto;"></div>
+<!-- 中奖弹窗 -->
+<div class="modal win-modal" id="winModal">
+    <div class="modal-card">
+        <div style="font-size:1.2rem;font-weight:bold;">🎉 恭喜中奖 🎉</div>
+        <div class="prize-icon" id="winIcon">🏆</div>
+        <div class="prize-name" id="winName">大奖</div>
+        <button class="btn btn-primary" onclick="closeModal('winModal')">太棒了！</button>
     </div>
 </div>
 
 <script>
-// ==================== 后端 API 配置 ====================
+// ==================== 配置 ====================
 const API_BASE_URL = 'https://api.gaike.xyz';
+let currentUser = null;
+let currentMode = 'user';
+let isAdminLoggedIn = false;
+let prizes = [];
+let currentQueryPhone = '';
 
-async function apiRequest(endpoint, method = 'GET', data = null) {
-    const options = { method, headers: { 'Content-Type': 'application/json' } };
-    if (data && (method === 'POST' || method === 'PUT')) options.body = JSON.stringify(data);
+// ==================== API 请求 ====================
+async function api(endpoint, method = 'GET', data = null) {
     try {
-        const response = await fetch(API_BASE_URL + endpoint, options);
-        return await response.json();
-    } catch (error) {
-        console.error('API Error:', error);
-        return { success: false, message: '网络请求失败' };
-    }
-}
-
-async function checkApiStatus() {
-    try {
-        const result = await apiRequest('/');
-        const el = document.getElementById('apiStatusText');
-        if (result && result.message) {
-            el.innerHTML = '<span style="color:green;">✅在线</span> v' + result.version;
-            return true;
-        }
-        el.innerHTML = '<span style="color:red;">❌离线</span>';
-        return false;
+        const opts = { method, headers: { 'Content-Type': 'application/json' } };
+        if (data && (method === 'POST' || method === 'PUT')) opts.body = JSON.stringify(data);
+        const res = await fetch(API_BASE_URL + endpoint, opts);
+        return await res.json();
     } catch (e) {
-        document.getElementById('apiStatusText').innerHTML = '<span style="color:red;">❌失败</span>';
-        return false;
+        console.error('API Error:', e);
+        return { success: false, message: '网络连接失败' };
     }
-}
-
-// ==================== 全局变量 ====================
-const ICON_LIBRARY = ["🎁","🎉","🏆","💎","👑","🍫","🍭","🧸","📱","💻","🎧","📷","⌚","💄","👟","🧢","✈️","🚗","🏠","🐱","🐶","🌸","⭐","🔥","💰","🔮","🎮","📚","⚽","🏀","🥇","🎨","🍪","🍬","🍷","💍","💡","🌈","💝","💖","🎵","🎶","🔔","🎤","✨","🌟","💫","🍀","🎯"];
-const DEFAULT_PRIZES = [
-    { name: "🏆 黄金大奖", weight: 5, iconValue: "🏆" },
-    { name: "🎧 高端耳机", weight: 10, iconValue: "🎧" },
-    { name: "🍫 巧克力礼盒", weight: 20, iconValue: "🍫" },
-    { name: "🧸 毛绒公仔", weight: 30, iconValue: "🧸" },
-    { name: "💝 幸运券", weight: 35, iconValue: "💝" },
-    { name: "😢 谢谢参与", weight: 100, iconValue: "😢" }
-];
-
-let prizeList = [], currentUser = null, isRolling = false, rollInterval = null;
-let activeEditIdx = null, currentSearchPhone = '', currentShareLink = '', isUserMode = false;
-
-// ==================== 工具函数 ====================
-function showToast(msg, duration = 2500) {
-    const toast = document.createElement('div');
-    toast.className = 'toast-notification';
-    toast.innerText = msg;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), duration);
-}
-
-function escapeHtml(str) {
-    return str ? str.replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[m]) : '';
-}
-
-// ==================== 用户相关 ====================
-async function userLogin(phone) {
-    if (!phone || !/^1[3-9]\d{9}$/.test(phone)) { showToast('请输入正确的11位手机号'); return false; }
-    const btn = document.getElementById('submitLoginBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="loading-spinner"></span> 登录中';
-    
-    const result = await apiRequest('/api/login', 'POST', { phone });
-    btn.disabled = false;
-    btn.innerText = '登录参与抽奖';
-    
-    if (result.success) {
-        currentUser = { phone, tickets: result.user.tickets || 0 };
-        sessionStorage.setItem('session', JSON.stringify(currentUser));
-        updateUIAfterLogin();
-        showToast(`登录成功，抽奖券: ${currentUser.tickets}`);
-        return true;
-    }
-    showToast(result.message || '登录失败');
-    return false;
-}
-
-function updateUIAfterLogin() {
-    if (!currentUser) return;
-    document.getElementById('userPhoneDisplay').innerHTML = `<i class="fas fa-mobile-alt"></i> ${currentUser.phone}`;
-    updateTicketDisplay();
-    document.getElementById('loginModal').style.display = 'none';
-}
-
-function updateTicketDisplay() {
-    if (!currentUser) return;
-    const tickets = currentUser.tickets || 0;
-    document.getElementById('remainChances').innerHTML = `🎫 券: ${tickets}`;
-    document.getElementById('drawBtn').disabled = tickets <= 0;
-    document.getElementById('resultArea').innerHTML = tickets <= 0 ? '🎫 暂无抽奖券，联系管理员领取' : '✨ 点击抽奖 ✨';
-}
-
-// ==================== 抽奖相关 ====================
-async function performDraw() {
-    if (!currentUser) { document.getElementById('loginModal').style.display = 'flex'; return; }
-    if (currentUser.tickets <= 0) { showToast('抽奖券不足'); return; }
-    if (isRolling) return;
-    
-    const result = await apiRequest('/api/draw', 'POST', { phone: currentUser.phone });
-    if (!result.success) { showToast(result.message || '抽奖失败'); return; }
-    
-    const finalPrize = result.prize;
-    currentUser.tickets = result.tickets_left;
-    
-    startRollingAnimation(prizeList, finalPrize, () => {
-        updateTicketDisplay();
-        document.getElementById('resultArea').innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:10px;"><div style="font-size:2rem;">${finalPrize.icon}</div><div style="font-weight:bold;">✨ ${escapeHtml(finalPrize.name)} ✨</div></div>`;
-        showToast(`恭喜获得：${finalPrize.name}！剩余券:${currentUser.tickets}`);
-        document.getElementById('winIcon').innerText = finalPrize.icon;
-        document.getElementById('winPrizeName').innerText = finalPrize.name;
-        document.getElementById('winModal').style.display = 'flex';
-    });
-}
-
-function startRollingAnimation(prizes, finalPrize, callback) {
-    isRolling = true;
-    const container = document.getElementById('rollingContainer');
-    container.classList.add('rolling-active');
-    document.getElementById('drawBtn').disabled = true;
-    
-    const startTime = Date.now();
-    const duration = 2200;
-    
-    rollInterval = setInterval(() => {
-        if (Date.now() - startTime < duration) {
-            const rp = prizes[Math.floor(Math.random() * prizes.length)];
-            document.getElementById('rollingIcon').innerText = rp.iconValue;
-            document.getElementById('rollingName').innerText = rp.name;
-        } else {
-            clearInterval(rollInterval);
-            container.classList.remove('rolling-active');
-            document.getElementById('rollingIcon').innerText = finalPrize.icon;
-            document.getElementById('rollingName').innerText = finalPrize.name;
-            isRolling = false;
-            callback && callback();
-        }
-    }, 70);
-}
-
-// ==================== 奖品管理 ====================
-async function getPrizes() {
-    const result = await apiRequest('/api/prizes');
-    if (result.success && result.prizes) {
-        prizeList = result.prizes.map(p => ({ name: p.name, weight: p.weight, iconValue: p.icon }));
-        return true;
-    }
-    return false;
-}
-
-async function updatePrizes() {
-    const apiPrizes = prizeList.map(p => ({ name: p.name, weight: p.weight, icon: p.iconValue }));
-    return await apiRequest('/api/prizes', 'POST', { prizes: apiPrizes });
-}
-
-function renderPrizeTable() {
-    const tbody = document.getElementById('prizeTableBody');
-    tbody.innerHTML = '';
-    prizeList.forEach((prize, idx) => {
-        const row = tbody.insertRow();
-        row.innerHTML = `
-            <td><div style="font-size:1.5rem;cursor:pointer;" data-idx="${idx}">${prize.iconValue}</div></td>
-            <td><input type="text" value="${escapeHtml(prize.name)}" data-idx="${idx}" class="prize-name" style="width:100px;border-radius:20px;padding:4px;"></td>
-            <td><input type="number" value="${prize.weight}" data-idx="${idx}" class="prize-weight" style="width:50px;border-radius:20px;padding:4px;"></td>
-            <td><button class="remove-btn" data-idx="${idx}" style="padding:4px 8px;background:#ff8787;color:white;border:none;border-radius:20px;cursor:pointer;">✖</button></td>
-        `;
-    });
-    
-    tbody.querySelectorAll('.prize-name').forEach(inp => inp.onchange = e => { prizeList[inp.dataset.idx].name = inp.value; updatePrizes(); updateMarquee(); });
-    tbody.querySelectorAll('.prize-weight').forEach(inp => inp.onchange = e => { prizeList[inp.dataset.idx].weight = Math.max(0, parseInt(inp.value) || 0); updatePrizes(); });
-    tbody.querySelectorAll('.remove-btn').forEach(btn => btn.onclick = e => { if (prizeList.length > 1) { prizeList.splice(btn.dataset.idx, 1); renderPrizeTable(); updateMarquee(); updatePrizes(); showToast('已删除'); } else showToast('至少保留一个'); });
-    tbody.querySelectorAll('[data-idx]').forEach(el => el.onclick = e => { if (el.classList.contains('prize-name') || el.classList.contains('prize-weight') || el.classList.contains('remove-btn')) return; openIconSelector(parseInt(el.dataset.idx)); });
-}
-
-function openIconSelector(idx) {
-    activeEditIdx = idx;
-    const grid = document.getElementById('iconGrid');
-    grid.innerHTML = '';
-    ICON_LIBRARY.forEach(icon => {
-        const div = document.createElement('div');
-        div.style.cssText = 'font-size:1.8rem;cursor:pointer;padding:6px;border-radius:12px;background:#f1f4ff;text-align:center;';
-        div.innerText = icon;
-        div.onclick = () => { prizeList[activeEditIdx].iconValue = icon; renderPrizeTable(); updateMarquee(); updatePrizes(); document.getElementById('iconModal').style.display = 'none'; showToast('图标已更新'); };
-        grid.appendChild(div);
-    });
-    document.getElementById('iconModal').style.display = 'flex';
-}
-
-function updateMarquee() {
-    const track = document.getElementById('marqueeTrack');
-    track.innerHTML = '';
-    [...prizeList, ...prizeList].forEach(p => {
-        const div = document.createElement('div');
-        div.className = 'marquee-item';
-        div.innerHTML = `<div style="font-size:1.5rem;">${p.iconValue}</div><span>${escapeHtml(p.name.slice(0,6))}</span>`;
-        track.appendChild(div);
-    });
-}
-
-// ==================== 管理功能 ====================
-async function searchUser() {
-    const phone = document.getElementById('searchPhone').value.trim();
-    if (!phone) return;
-    currentSearchPhone = phone;
-    const result = await apiRequest('/api/user/' + phone);
-    const info = document.getElementById('userPhoneInfo');
-    if (result.success && result.user) {
-        info.innerHTML = `<strong>📱 ${phone}</strong><br>🎫 券: ${result.user.tickets || 0}`;
-    } else {
-        info.innerHTML = `<strong>📱 ${phone}</strong><br>❌ 未注册，发放券将自动创建`;
-    }
-    info.style.display = 'block';
-}
-
-async function addTicketsToUser() {
-    if (!currentSearchPhone) { showToast('请先查询'); return; }
-    const amount = parseInt(document.getElementById('addChanceAmount').value) || 1;
-    const result = await apiRequest('/api/tickets/add', 'POST', { phone: currentSearchPhone, count: amount });
-    if (result.success) { showToast(`已发放 ${amount} 张券`); searchUser(); }
-    else showToast(result.message || '发放失败');
-}
-
-async function batchAddTickets() {
-    if (!confirm('为所有用户+1券?')) return;
-    const result = await apiRequest('/api/tickets/batch', 'POST', { count: 1 });
-    if (result.success) showToast(`已为 ${result.user_count} 位用户+1券`);
-    else showToast(result.message || '失败');
-}
-
-async function refreshStats() {
-    const result = await apiRequest('/api/stats');
-    const el = document.getElementById('statsDisplay');
-    if (result.success) {
-        const s = result.stats;
-        el.innerHTML = `👥 用户: ${s.total_users} | 🎰 抽奖: ${s.total_draws} | 🎫 总券: ${s.total_tickets}`;
-    } else el.innerHTML = '获取统计失败';
-}
-
-async function exportExcel() {
-    const result = await apiRequest('/api/export');
-    if (!result.success) { showToast('导出失败'); return; }
-    
-    const data = [];
-    const users = result.data.users || {};
-    for (const phone in users) {
-        const u = users[phone];
-        data.push({ 手机号: phone, 抽奖券: u.tickets || 0, 注册时间: u.created_at || '' });
-    }
-    
-    if (!data.length) { showToast('无数据'); return; }
-    
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '用户数据');
-    XLSX.writeFile(wb, `盲盒数据_${new Date().toISOString().slice(0,10)}.xlsx`);
-    showToast(`导出 ${data.length} 条记录`);
-}
-
-// ==================== 配置保存 ====================
-function saveConfiguration() {
-    const link = window.location.href.split('?')[0];
-    currentShareLink = link;
-    document.getElementById('shareLinkDisplay').innerHTML = `<i class="fas fa-link"></i> ${link.substring(0,50)}...`;
-    document.getElementById('shareLinkDisplay').dataset.link = link;
-    generateRealQRCode(link, 'qrcode');
-    updatePrizes();
-    showToast('✅ 配置已保存，二维码已生成！');
-}
-
-function generateRealQRCode(text, elementId) {
-    const container = document.getElementById(elementId);
-    container.innerHTML = '';
-    try {
-        new QRCode(elementId, { text, width: 160, height: 160, correctLevel: QRCode.CorrectLevel.H });
-    } catch (e) { container.innerHTML = '二维码生成失败'; }
-}
-
-function copyShareLink() {
-    const link = currentShareLink || document.getElementById('shareLinkDisplay').dataset.link;
-    if (link) { navigator.clipboard.writeText(link); showToast('链接已复制'); }
-    else showToast('请先保存配置');
-}
-
-function downloadQRCode() {
-    const img = document.querySelector('#qrcode img') || document.querySelector('#qrcode canvas');
-    if (img) { const a = document.createElement('a'); a.download = 'qrcode.png'; a.href = img.src; a.click(); showToast('已保存'); }
-    else showToast('二维码未生成');
 }
 
 // ==================== 初始化 ====================
 async function init() {
-    await checkApiStatus();
+    await checkAPIStatus();
     
-    const urlParams = new URLSearchParams(window.location.search);
-    const userParam = urlParams.get('user');
-    
-    if (userParam) {
-        isUserMode = true;
-        document.getElementById('adminPanel').style.display = 'none';
-        document.getElementById('lotteryPanel').style.display = 'flex';
-        
-        await getPrizes();
-        updateMarquee();
-        
-        const saved = sessionStorage.getItem('session');
-        if (saved) { currentUser = JSON.parse(saved); updateUIAfterLogin(); }
-        else document.getElementById('loginModal').style.display = 'flex';
-        
-        document.getElementById('submitLoginBtn').onclick = async () => await userLogin(document.getElementById('loginPhone').value.trim());
-        document.getElementById('drawBtn').onclick = performDraw;
-    } else {
-        isUserMode = false;
-        document.getElementById('adminPanel').style.display = 'block';
-        document.getElementById('lotteryPanel').style.display = 'none';
-        
-        await getPrizes();
-        renderPrizeTable();
-        updateMarquee();
-        refreshStats();
-        
-        document.getElementById('saveConfigBtn').onclick = saveConfiguration;
-        document.getElementById('resetDefaultBtn').onclick = async () => { prizeList = JSON.parse(JSON.stringify(DEFAULT_PRIZES)); renderPrizeTable(); updateMarquee(); await updatePrizes(); showToast('已重置'); };
-        document.getElementById('addPrizeBtn').onclick = () => { prizeList.push({ name: "新奖品", weight: 10, iconValue: "🎁" }); renderPrizeTable(); updateMarquee(); };
-        document.getElementById('batchAddTicketsBtn').onclick = batchAddTickets;
-        document.getElementById('searchUserBtn').onclick = searchUser;
-        document.getElementById('addUserChanceBtn').onclick = addTicketsToUser;
-        document.getElementById('resetUserChanceBtn').onclick = async () => { if (currentSearchPhone) { await apiRequest('/api/tickets/add', 'POST', { phone: currentSearchPhone, count: -9999 }); searchUser(); showToast('已清空'); } };
-        document.getElementById('exportExcelBtn').onclick = exportExcel;
-        document.getElementById('refreshStatsBtn').onclick = refreshStats;
-        document.getElementById('copyLinkBtn').onclick = copyShareLink;
-        document.getElementById('downloadQrBtn').onclick = downloadQRCode;
+    // 检查登录状态
+    const saved = sessionStorage.getItem('manghe_user');
+    if (saved) {
+        currentUser = JSON.parse(saved);
+        showLoggedIn();
+        loadUserRecords();
     }
     
-    document.getElementById('closeWinModalBtn').onclick = () => document.getElementById('winModal').style.display = 'none';
-    document.getElementById('closeIconModal').onclick = () => document.getElementById('iconModal').style.display = 'none';
+    // 加载奖品
+    await loadPrizes();
 }
 
+async function checkAPIStatus() {
+    const res = await api('/');
+    const dot = document.getElementById('statusDot');
+    const text = document.getElementById('statusText');
+    if (res.success !== false) {
+        dot.classList.remove('offline');
+        text.textContent = '在线 v' + (res.version || '2.0');
+    } else {
+        dot.classList.add('offline');
+        text.textContent = '离线';
+    }
+}
+
+// ==================== 模式切换 ====================
+function switchMode(mode) {
+    currentMode = mode;
+    document.getElementById('userModeBtn').classList.toggle('active', mode === 'user');
+    document.getElementById('adminModeBtn').classList.toggle('active', mode === 'admin');
+    document.getElementById('userPanel').style.display = mode === 'user' ? 'block' : 'none';
+    document.getElementById('adminPanel').classList.toggle('active', mode === 'admin');
+    
+    if (mode === 'admin') {
+        if (!isAdminLoggedIn) {
+            showModal('adminLoginModal');
+        } else {
+            refreshStats();
+        }
+    }
+}
+
+// ==================== 用户功能 ====================
+function showLoginModal() {
+    showModal('loginModal');
+}
+
+async function userLogin() {
+    const phone = document.getElementById('loginPhone').value.trim();
+    if (!phone || phone.length !== 11 || !phone.startsWith('1')) {
+        showToast('请输入正确的11位手机号');
+        return;
+    }
+    
+    const res = await api('/api/login', 'POST', { phone });
+    if (res.success) {
+        currentUser = { phone, tickets: res.user.tickets };
+        sessionStorage.setItem('manghe_user', JSON.stringify(currentUser));
+        closeModal('loginModal');
+        showLoggedIn();
+        showToast('登录成功！');
+        loadUserRecords();
+    } else {
+        showToast(res.message || '登录失败');
+    }
+}
+
+function showLoggedIn() {
+    document.getElementById('notLoggedIn').style.display = 'none';
+    document.getElementById('loggedIn').style.display = 'block';
+    document.getElementById('displayPhone').textContent = currentUser.phone.replace(/(\d{3})\d{4}(\d{4})/, '$1****$2');
+    updateTicketsDisplay();
+}
+
+function updateTicketsDisplay() {
+    document.getElementById('displayTickets').textContent = currentUser.tickets;
+    document.getElementById('drawBtn').disabled = currentUser.tickets <= 0;
+    document.getElementById('drawHint').textContent = currentUser.tickets <= 0 
+        ? '抽奖券不足，请联系管理员领取' 
+        : `每次抽奖消耗1张券，当前剩余 ${currentUser.tickets} 张`;
+}
+
+async function loadUserRecords() {
+    if (!currentUser) return;
+    const res = await api('/api/records/' + currentUser.phone + '?limit=10');
+    if (res.success && res.records.length > 0) {
+        const list = document.getElementById('historyList');
+        list.innerHTML = res.records.map(r => `
+            <div class="history-item">
+                <div class="icon">${r.prize.icon}</div>
+                <div class="info">
+                    <div class="name">${r.prize.name}</div>
+                    <div class="time">${new Date(r.time).toLocaleString()}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+async function performDraw() {
+    if (!currentUser) {
+        showLoginModal();
+        return;
+    }
+    
+    if (currentUser.tickets <= 0) {
+        showToast('抽奖券不足');
+        return;
+    }
+    
+    // 开始动画
+    const display = document.getElementById('prizeDisplay');
+    display.classList.add('rolling');
+    document.getElementById('drawBtn').disabled = true;
+    
+    // 调用API
+    const res = await api('/api/draw', 'POST', { phone: currentUser.phone });
+    
+    // 停止动画并显示结果
+    display.classList.remove('rolling');
+    
+    if (res.success) {
+        const prize = res.prize;
+        currentUser.tickets = res.tickets_left;
+        updateTicketsDisplay();
+        
+        // 显示中奖结果
+        display.innerHTML = `
+            <div class="icon">${prize.icon}</div>
+            <div class="name">${prize.name}</div>
+        `;
+        
+        // 显示中奖弹窗
+        document.getElementById('winIcon').textContent = prize.icon;
+        document.getElementById('winName').textContent = prize.name;
+        showModal('winModal');
+        
+        // 刷新记录
+        loadUserRecords();
+    } else {
+        showToast(res.message || '抽奖失败');
+        document.getElementById('drawBtn').disabled = currentUser.tickets <= 0;
+    }
+}
+
+function logout() {
+    currentUser = null;
+    sessionStorage.removeItem('manghe_user');
+    document.getElementById('notLoggedIn').style.display = 'block';
+    document.getElementById('loggedIn').style.display = 'none';
+    showToast('已退出登录');
+}
+
+// ==================== 管理员功能 ====================
+async function adminLogin() {
+    const pwd = document.getElementById('adminPassword').value;
+    const res = await api('/api/admin/login', 'POST', { password: pwd });
+    
+    if (res.success) {
+        isAdminLoggedIn = true;
+        closeModal('adminLoginModal');
+        refreshStats();
+        loadPrizes();
+        showToast('管理员登录成功');
+    } else {
+        showToast('密码错误');
+    }
+}
+
+async function refreshStats() {
+    const res = await api('/api/admin/stats');
+    if (res.success) {
+        document.getElementById('statUsers').textContent = res.stats.total_users;
+        document.getElementById('statDraws').textContent = res.stats.total_draws;
+        document.getElementById('statTickets').textContent = res.stats.total_tickets;
+    }
+}
+
+async function loadPrizes() {
+    const res = await api('/api/prizes');
+    if (res.success) {
+        prizes = res.prizes;
+        renderPrizeTable();
+    }
+}
+
+function renderPrizeTable() {
+    const tbody = document.getElementById('prizeTableBody');
+    tbody.innerHTML = prizes.map((p, i) => `
+        <tr>
+            <td><span style="font-size:1.2rem;cursor:pointer" onclick="selectIcon(${i})">${p.icon}</span></td>
+            <td><input type="text" value="${p.name}" onchange="updatePrize(${i}, 'name', this.value)"></td>
+            <td><input type="number" value="${p.weight}" onchange="updatePrize(${i}, 'weight', this.value)" style="width:50px"></td>
+            <td><button class="admin-btn btn-danger" onclick="removePrize(${i})">删除</button></td>
+        </tr>
+    `).join('');
+}
+
+async function updatePrize(index, field, value) {
+    prizes[index][field] = field === 'weight' ? parseInt(value) || 0 : value;
+    await api('/api/admin/prizes', 'POST', { prizes });
+}
+
+function addPrize() {
+    prizes.push({ id: Date.now().toString(), name: "新奖品", weight: 10, icon: "🎁", stock: -1 });
+    renderPrizeTable();
+    api('/api/admin/prizes', 'POST', { prizes });
+}
+
+async function removePrize(index) {
+    if (prizes.length <= 1) {
+        showToast('至少保留一个奖品');
+        return;
+    }
+    prizes.splice(index, 1);
+    renderPrizeTable();
+    await api('/api/admin/prizes', 'POST', { prizes });
+    showToast('已删除');
+}
+
+async function resetPrizes() {
+    prizes = [
+        { id: "1", name: "🏆 黄金大奖", weight: 5, icon: "🏆", stock: -1 },
+        { id: "2", name: "🎧 高端耳机", weight: 10, icon: "🎧", stock: -1 },
+        { id: "3", name: "🍫 巧克力礼盒", weight: 20, icon: "🍫", stock: -1 },
+        { id: "4", name: "🧸 毛绒公仔", weight: 30, icon: "🧸", stock: -1 },
+        { id: "5", name: "💝 幸运券", weight: 35, icon: "💝", stock: -1 },
+        { id: "6", name: "😢 谢谢参与", weight: 100, icon: "😢", stock: -1 }
+    ];
+    renderPrizeTable();
+    await api('/api/admin/prizes', 'POST', { prizes });
+    showToast('已重置为默认奖品');
+}
+
+async function queryUser() {
+    const phone = document.getElementById('inputPhone').value.trim();
+    if (!phone || phone.length !== 11) {
+        showToast('请输入正确的手机号');
+        return;
+    }
+    currentQueryPhone = phone;
+    const res = await api('/api/user/' + phone);
+    const resultDiv = document.getElementById('queryResult');
+    resultDiv.style.display = 'block';
+    
+    if (res.success) {
+        document.getElementById('resultPhone').textContent = res.user.phone;
+        document.getElementById('resultTickets').textContent = res.user.tickets;
+    } else {
+        document.getElementById('resultPhone').textContent = phone;
+        document.getElementById('resultTickets').textContent = '0 (用户未注册)';
+    }
+}
+
+async function addTickets() {
+    if (!currentQueryPhone) {
+        showToast('请先查询用户');
+        return;
+    }
+    const amount = parseInt(document.getElementById('inputAmount').value) || 1;
+    const res = await api('/api/admin/tickets/add', 'POST', { phone: currentQueryPhone, count: amount });
+    if (res.success) {
+        showToast(`已发放 ${amount} 张券`);
+        queryUser();
+        refreshStats();
+    } else {
+        showToast(res.message || '操作失败');
+    }
+}
+
+async function reduceTickets() {
+    if (!currentQueryPhone) {
+        showToast('请先查询用户');
+        return;
+    }
+    const amount = -(parseInt(document.getElementById('inputAmount').value) || 1);
+    const res = await api('/api/admin/tickets/add', 'POST', { phone: currentQueryPhone, count: amount });
+    if (res.success) {
+        showToast(`已扣减 ${-amount} 张券`);
+        queryUser();
+        refreshStats();
+    } else {
+        showToast(res.message || '操作失败');
+    }
+}
+
+async function batchAddTickets() {
+    if (!confirm('确定为所有用户发放1张抽奖券？')) return;
+    const res = await api('/api/admin/tickets/batch', 'POST', { count: 1 });
+    if (res.success) {
+        showToast(`已为 ${res.user_count} 位用户发放抽奖券`);
+        refreshStats();
+    } else {
+        showToast(res.message || '操作失败');
+    }
+}
+
+async function exportData() {
+    const res = await api('/api/admin/export');
+    if (!res.success) {
+        showToast('导出失败');
+        return;
+    }
+    
+    const users = Object.entries(res.data.users || {}).map(([phone, data]) => ({
+        手机号: phone,
+        抽奖券: data.tickets || 0,
+        注册时间: data.created_at || ''
+    }));
+    
+    if (!users.length) {
+        showToast('暂无数据');
+        return;
+    }
+    
+    const ws = XLSX.utils.json_to_sheet(users);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '用户数据');
+    XLSX.writeFile(wb, `盲盒数据_${new Date().toISOString().slice(0,10)}.xlsx`);
+    showToast(`已导出 ${users.length} 条记录`);
+}
+
+function generateQRCode() {
+    const link = window.location.origin + window.location.pathname;
+    document.getElementById('qrLink').textContent = link;
+    
+    const qrDiv = document.getElementById('qrcode');
+    qrDiv.innerHTML = '';
+    new QRCode('qrcode', { text: link, width: 120, height: 120 });
+    showToast('二维码已生成');
+}
+
+function copyLink() {
+    const link = document.getElementById('qrLink').textContent || window.location.href;
+    navigator.clipboard.writeText(link).then(() => {
+        showToast('链接已复制');
+    });
+}
+
+// ==================== 工具函数 ====================
+function showModal(id) {
+    document.getElementById(id).classList.add('show');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2500);
+}
+
+// 点击模态框外部关闭
+document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', e => {
+        if (e.target === modal) closeModal(modal.id);
+    });
+});
+
+// 启动
 init();
 </script>
 </body>
