@@ -21,11 +21,6 @@
         .header-btn:hover { background: rgba(255,255,255,0.3); }
         .header-btn.active { background: white; color: #667eea; }
         
-        /* API 状态 */
-        .api-status { padding: 8px 16px; background: #f0f9ff; font-size: 0.75rem; display: flex; align-items: center; gap: 8px; }
-        .api-status .dot { width: 8px; height: 8px; border-radius: 50%; background: #10b981; }
-        .api-status .dot.offline { background: #ef4444; }
-        
         /* 内容区域 */
         .content { padding: 16px; min-height: 400px; }
         
@@ -111,12 +106,9 @@
         /* Toast */
         .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 24px; font-size: 0.85rem; z-index: 2000; }
         
-        /* 用户模式隐藏管理面板 */
-        body.user-mode .admin-only { display: none !important; }
-        
-        /* 加载动画 */
-        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        /* 数据提示 */
+        .data-notice { background: #fef3c7; border-radius: 12px; padding: 12px; margin-bottom: 16px; font-size: 0.8rem; color: #92400e; }
+        .data-notice i { margin-right: 8px; }
     </style>
 </head>
 <body>
@@ -129,12 +121,6 @@
             <button class="header-btn active" id="userModeBtn" onclick="switchMode('user')">🎲 用户抽奖</button>
             <button class="header-btn" id="adminModeBtn" onclick="switchMode('admin')">⚙️ 管理后台</button>
         </div>
-    </div>
-    
-    <!-- API 状态 -->
-    <div class="api-status">
-        <span class="dot" id="statusDot"></span>
-        <span>API: <span id="statusText">检测中...</span></span>
     </div>
     
     <!-- 内容区域 -->
@@ -183,6 +169,12 @@
         
         <!-- 管理员面板 -->
         <div class="admin-panel" id="adminPanel">
+            <!-- 数据提示 -->
+            <div class="data-notice">
+                <i class="fas fa-info-circle"></i>
+                数据存储在浏览器中，清除浏览器数据会导致数据丢失。建议定期导出备份。
+            </div>
+            
             <!-- 统计数据 -->
             <div class="admin-section">
                 <h3><i class="fas fa-chart-bar"></i> 数据统计</h3>
@@ -202,10 +194,11 @@
                 </div>
                 <button class="admin-btn btn-secondary" onclick="refreshStats()"><i class="fas fa-sync"></i> 刷新</button>
                 <button class="admin-btn btn-success" onclick="exportData()"><i class="fas fa-download"></i> 导出数据</button>
+                <button class="admin-btn btn-secondary" onclick="importData()"><i class="fas fa-upload"></i> 导入数据</button>
             </div>
             
             <!-- 奖品管理 -->
-            <div class="admin-section admin-only">
+            <div class="admin-section">
                 <h3><i class="fas fa-gift"></i> 奖品配置</h3>
                 <div style="max-height:200px;overflow-y:auto;">
                     <table class="prize-table">
@@ -218,7 +211,7 @@
             </div>
             
             <!-- 抽奖券管理 -->
-            <div class="admin-section admin-only">
+            <div class="admin-section">
                 <h3><i class="fas fa-ticket-alt"></i> 抽奖券管理</h3>
                 <div class="input-group">
                     <input type="tel" id="inputPhone" placeholder="输入手机号" maxlength="11">
@@ -237,7 +230,7 @@
             </div>
             
             <!-- 二维码 -->
-            <div class="qr-section admin-only">
+            <div class="qr-section">
                 <h4>📱 扫码参与抽奖</h4>
                 <div id="qrcode"></div>
                 <div class="qr-link" id="qrLink">点击下方按钮生成</div>
@@ -268,6 +261,7 @@
         <input type="password" id="adminPassword" placeholder="请输入管理员密码">
         <button class="btn btn-primary" onclick="adminLogin()">登录</button>
         <button class="btn btn-secondary" onclick="closeModal('adminLoginModal')">取消</button>
+        <div class="hint">默认密码: manghe2024</div>
     </div>
 </div>
 
@@ -281,55 +275,66 @@
     </div>
 </div>
 
+<!-- 隐藏的文件输入 -->
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="handleImport(event)">
+
 <script>
-// ==================== 配置 ====================
-const API_BASE_URL = 'https://api.gaike.xyz';
+// ==================== 本地存储 ====================
+const STORAGE_KEY = 'manghe_data_v2';
+const ADMIN_PASSWORD = 'manghe2024';
+
+// 默认数据结构
+const defaultData = {
+    users: {},
+    prizes: [
+        { id: "1", name: "🏆 黄金大奖", weight: 5, icon: "🏆" },
+        { id: "2", name: "🎧 高端耳机", weight: 10, icon: "🎧" },
+        { id: "3", name: "🍫 巧克力礼盒", weight: 20, icon: "🍫" },
+        { id: "4", name: "🧸 毛绒公仔", weight: 30, icon: "🧸" },
+        { id: "5", name: "💝 幸运券", weight: 35, icon: "💝" },
+        { id: "6", name: "😢 谢谢参与", weight: 100, icon: "😢" }
+    ],
+    records: []
+};
+
+// 加载数据
+function loadData() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            return JSON.parse(saved);
+        } catch (e) {
+            return JSON.parse(JSON.stringify(defaultData));
+        }
+    }
+    return JSON.parse(JSON.stringify(defaultData));
+}
+
+// 保存数据
+function saveData() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+}
+
+// 应用数据
+let appData = loadData();
 let currentUser = null;
 let currentMode = 'user';
 let isAdminLoggedIn = false;
-let prizes = [];
 let currentQueryPhone = '';
 
-// ==================== API 请求 ====================
-async function api(endpoint, method = 'GET', data = null) {
-    try {
-        const opts = { method, headers: { 'Content-Type': 'application/json' } };
-        if (data && (method === 'POST' || method === 'PUT')) opts.body = JSON.stringify(data);
-        const res = await fetch(API_BASE_URL + endpoint, opts);
-        return await res.json();
-    } catch (e) {
-        console.error('API Error:', e);
-        return { success: false, message: '网络连接失败' };
-    }
-}
-
 // ==================== 初始化 ====================
-async function init() {
-    await checkAPIStatus();
-    
+function init() {
     // 检查登录状态
-    const saved = sessionStorage.getItem('manghe_user');
-    if (saved) {
-        currentUser = JSON.parse(saved);
+    const savedUser = sessionStorage.getItem('manghe_user');
+    if (savedUser) {
+        currentUser = JSON.parse(savedUser);
         showLoggedIn();
         loadUserRecords();
     }
     
     // 加载奖品
-    await loadPrizes();
-}
-
-async function checkAPIStatus() {
-    const res = await api('/');
-    const dot = document.getElementById('statusDot');
-    const text = document.getElementById('statusText');
-    if (res.success !== false) {
-        dot.classList.remove('offline');
-        text.textContent = '在线 v' + (res.version || '2.0');
-    } else {
-        dot.classList.add('offline');
-        text.textContent = '离线';
-    }
+    renderPrizeTable();
+    refreshStats();
 }
 
 // ==================== 模式切换 ====================
@@ -340,12 +345,8 @@ function switchMode(mode) {
     document.getElementById('userPanel').style.display = mode === 'user' ? 'block' : 'none';
     document.getElementById('adminPanel').classList.toggle('active', mode === 'admin');
     
-    if (mode === 'admin') {
-        if (!isAdminLoggedIn) {
-            showModal('adminLoginModal');
-        } else {
-            refreshStats();
-        }
+    if (mode === 'admin' && !isAdminLoggedIn) {
+        showModal('adminLoginModal');
     }
 }
 
@@ -354,24 +355,31 @@ function showLoginModal() {
     showModal('loginModal');
 }
 
-async function userLogin() {
+function userLogin() {
     const phone = document.getElementById('loginPhone').value.trim();
     if (!phone || phone.length !== 11 || !phone.startsWith('1')) {
         showToast('请输入正确的11位手机号');
         return;
     }
     
-    const res = await api('/api/login', 'POST', { phone });
-    if (res.success) {
-        currentUser = { phone, tickets: res.user.tickets };
-        sessionStorage.setItem('manghe_user', JSON.stringify(currentUser));
-        closeModal('loginModal');
-        showLoggedIn();
-        showToast('登录成功！');
-        loadUserRecords();
-    } else {
-        showToast(res.message || '登录失败');
+    // 创建或获取用户
+    if (!appData.users[phone]) {
+        appData.users[phone] = {
+            phone: phone,
+            tickets: 0,
+            created_at: new Date().toISOString(),
+            records: []
+        };
+        saveData();
     }
+    
+    currentUser = { phone, tickets: appData.users[phone].tickets };
+    sessionStorage.setItem('manghe_user', JSON.stringify(currentUser));
+    
+    closeModal('loginModal');
+    showLoggedIn();
+    showToast('登录成功！');
+    loadUserRecords();
 }
 
 function showLoggedIn() {
@@ -382,19 +390,22 @@ function showLoggedIn() {
 }
 
 function updateTicketsDisplay() {
-    document.getElementById('displayTickets').textContent = currentUser.tickets;
-    document.getElementById('drawBtn').disabled = currentUser.tickets <= 0;
-    document.getElementById('drawHint').textContent = currentUser.tickets <= 0 
+    const tickets = appData.users[currentUser.phone]?.tickets || 0;
+    currentUser.tickets = tickets;
+    document.getElementById('displayTickets').textContent = tickets;
+    document.getElementById('drawBtn').disabled = tickets <= 0;
+    document.getElementById('drawHint').textContent = tickets <= 0 
         ? '抽奖券不足，请联系管理员领取' 
-        : `每次抽奖消耗1张券，当前剩余 ${currentUser.tickets} 张`;
+        : `每次抽奖消耗1张券，当前剩余 ${tickets} 张`;
 }
 
-async function loadUserRecords() {
+function loadUserRecords() {
     if (!currentUser) return;
-    const res = await api('/api/records/' + currentUser.phone + '?limit=10');
-    if (res.success && res.records.length > 0) {
+    const records = appData.records.filter(r => r.phone === currentUser.phone);
+    
+    if (records.length > 0) {
         const list = document.getElementById('historyList');
-        list.innerHTML = res.records.map(r => `
+        list.innerHTML = records.slice(-10).reverse().map(r => `
             <div class="history-item">
                 <div class="icon">${r.prize.icon}</div>
                 <div class="info">
@@ -406,13 +417,13 @@ async function loadUserRecords() {
     }
 }
 
-async function performDraw() {
+function performDraw() {
     if (!currentUser) {
         showLoginModal();
         return;
     }
     
-    if (currentUser.tickets <= 0) {
+    if (appData.users[currentUser.phone].tickets <= 0) {
         showToast('抽奖券不足');
         return;
     }
@@ -422,211 +433,221 @@ async function performDraw() {
     display.classList.add('rolling');
     document.getElementById('drawBtn').disabled = true;
     
-    // 调用API
-    const res = await api('/api/draw', 'POST', { phone: currentUser.phone });
+    // 抽奖逻辑
+    const prizes = appData.prizes.filter(p => p.weight > 0);
+    const totalWeight = prizes.reduce((sum, p) => sum + p.weight, 0);
+    let rand = Math.random() * totalWeight;
+    let result = prizes[0];
+    
+    for (const prize of prizes) {
+        rand -= prize.weight;
+        if (rand <= 0) {
+            result = prize;
+            break;
+        }
+    }
+    
+    // 扣除抽奖券
+    appData.users[currentUser.phone].tickets--;
+    
+    // 记录抽奖
+    appData.records.push({
+        id: Date.now().toString(),
+        phone: currentUser.phone,
+        prize: { id: result.id, name: result.name, icon: result.icon },
+        time: new Date().toISOString()
+    });
+    
+    saveData();
     
     // 停止动画并显示结果
-    display.classList.remove('rolling');
-    
-    if (res.success) {
-        const prize = res.prize;
-        currentUser.tickets = res.tickets_left;
-        updateTicketsDisplay();
-        
-        // 显示中奖结果
+    setTimeout(() => {
+        display.classList.remove('rolling');
         display.innerHTML = `
-            <div class="icon">${prize.icon}</div>
-            <div class="name">${prize.name}</div>
+            <div class="icon">${result.icon}</div>
+            <div class="name">${result.name}</div>
         `;
         
+        updateTicketsDisplay();
+        
         // 显示中奖弹窗
-        document.getElementById('winIcon').textContent = prize.icon;
-        document.getElementById('winName').textContent = prize.name;
+        document.getElementById('winIcon').textContent = result.icon;
+        document.getElementById('winName').textContent = result.name;
         showModal('winModal');
         
-        // 刷新记录
         loadUserRecords();
-    } else {
-        showToast(res.message || '抽奖失败');
-        document.getElementById('drawBtn').disabled = currentUser.tickets <= 0;
-    }
-}
-
-function logout() {
-    currentUser = null;
-    sessionStorage.removeItem('manghe_user');
-    document.getElementById('notLoggedIn').style.display = 'block';
-    document.getElementById('loggedIn').style.display = 'none';
-    showToast('已退出登录');
+    }, 2000);
 }
 
 // ==================== 管理员功能 ====================
-async function adminLogin() {
+function adminLogin() {
     const pwd = document.getElementById('adminPassword').value;
-    const res = await api('/api/admin/login', 'POST', { password: pwd });
-    
-    if (res.success) {
+    if (pwd === ADMIN_PASSWORD) {
         isAdminLoggedIn = true;
         closeModal('adminLoginModal');
         refreshStats();
-        loadPrizes();
         showToast('管理员登录成功');
     } else {
         showToast('密码错误');
     }
 }
 
-async function refreshStats() {
-    const res = await api('/api/admin/stats');
-    if (res.success) {
-        document.getElementById('statUsers').textContent = res.stats.total_users;
-        document.getElementById('statDraws').textContent = res.stats.total_draws;
-        document.getElementById('statTickets').textContent = res.stats.total_tickets;
-    }
-}
-
-async function loadPrizes() {
-    const res = await api('/api/prizes');
-    if (res.success) {
-        prizes = res.prizes;
-        renderPrizeTable();
-    }
+function refreshStats() {
+    const users = Object.values(appData.users);
+    document.getElementById('statUsers').textContent = users.length;
+    document.getElementById('statDraws').textContent = appData.records.length;
+    document.getElementById('statTickets').textContent = users.reduce((sum, u) => sum + (u.tickets || 0), 0);
 }
 
 function renderPrizeTable() {
     const tbody = document.getElementById('prizeTableBody');
-    tbody.innerHTML = prizes.map((p, i) => `
+    tbody.innerHTML = appData.prizes.map((p, i) => `
         <tr>
             <td><span style="font-size:1.2rem;cursor:pointer" onclick="selectIcon(${i})">${p.icon}</span></td>
             <td><input type="text" value="${p.name}" onchange="updatePrize(${i}, 'name', this.value)"></td>
-            <td><input type="number" value="${p.weight}" onchange="updatePrize(${i}, 'weight', this.value)" style="width:50px"></td>
+            <td><input type="number" value="${p.weight}" onchange="updatePrize(${i}, 'weight', parseInt(this.value))" style="width:50px"></td>
             <td><button class="admin-btn btn-danger" onclick="removePrize(${i})">删除</button></td>
         </tr>
     `).join('');
 }
 
-async function updatePrize(index, field, value) {
-    prizes[index][field] = field === 'weight' ? parseInt(value) || 0 : value;
-    await api('/api/admin/prizes', 'POST', { prizes });
+function updatePrize(index, field, value) {
+    appData.prizes[index][field] = value;
+    saveData();
 }
 
 function addPrize() {
-    prizes.push({ id: Date.now().toString(), name: "新奖品", weight: 10, icon: "🎁", stock: -1 });
+    appData.prizes.push({ id: Date.now().toString(), name: "新奖品", weight: 10, icon: "🎁" });
     renderPrizeTable();
-    api('/api/admin/prizes', 'POST', { prizes });
+    saveData();
 }
 
-async function removePrize(index) {
-    if (prizes.length <= 1) {
+function removePrize(index) {
+    if (appData.prizes.length <= 1) {
         showToast('至少保留一个奖品');
         return;
     }
-    prizes.splice(index, 1);
+    appData.prizes.splice(index, 1);
     renderPrizeTable();
-    await api('/api/admin/prizes', 'POST', { prizes });
+    saveData();
     showToast('已删除');
 }
 
-async function resetPrizes() {
-    prizes = [
-        { id: "1", name: "🏆 黄金大奖", weight: 5, icon: "🏆", stock: -1 },
-        { id: "2", name: "🎧 高端耳机", weight: 10, icon: "🎧", stock: -1 },
-        { id: "3", name: "🍫 巧克力礼盒", weight: 20, icon: "🍫", stock: -1 },
-        { id: "4", name: "🧸 毛绒公仔", weight: 30, icon: "🧸", stock: -1 },
-        { id: "5", name: "💝 幸运券", weight: 35, icon: "💝", stock: -1 },
-        { id: "6", name: "😢 谢谢参与", weight: 100, icon: "😢", stock: -1 }
-    ];
+function resetPrizes() {
+    appData.prizes = JSON.parse(JSON.stringify(defaultData.prizes));
     renderPrizeTable();
-    await api('/api/admin/prizes', 'POST', { prizes });
+    saveData();
     showToast('已重置为默认奖品');
 }
 
-async function queryUser() {
+function queryUser() {
     const phone = document.getElementById('inputPhone').value.trim();
     if (!phone || phone.length !== 11) {
         showToast('请输入正确的手机号');
         return;
     }
     currentQueryPhone = phone;
-    const res = await api('/api/user/' + phone);
+    
     const resultDiv = document.getElementById('queryResult');
     resultDiv.style.display = 'block';
     
-    if (res.success) {
-        document.getElementById('resultPhone').textContent = res.user.phone;
-        document.getElementById('resultTickets').textContent = res.user.tickets;
+    if (appData.users[phone]) {
+        document.getElementById('resultPhone').textContent = appData.users[phone].phone;
+        document.getElementById('resultTickets').textContent = appData.users[phone].tickets;
     } else {
         document.getElementById('resultPhone').textContent = phone;
         document.getElementById('resultTickets').textContent = '0 (用户未注册)';
     }
 }
 
-async function addTickets() {
+function addTickets() {
     if (!currentQueryPhone) {
         showToast('请先查询用户');
         return;
     }
     const amount = parseInt(document.getElementById('inputAmount').value) || 1;
-    const res = await api('/api/admin/tickets/add', 'POST', { phone: currentQueryPhone, count: amount });
-    if (res.success) {
-        showToast(`已发放 ${amount} 张券`);
-        queryUser();
-        refreshStats();
-    } else {
-        showToast(res.message || '操作失败');
+    
+    if (!appData.users[currentQueryPhone]) {
+        appData.users[currentQueryPhone] = {
+            phone: currentQueryPhone,
+            tickets: 0,
+            created_at: new Date().toISOString()
+        };
     }
+    
+    appData.users[currentQueryPhone].tickets += amount;
+    saveData();
+    showToast(`已发放 ${amount} 张券`);
+    queryUser();
+    refreshStats();
 }
 
-async function reduceTickets() {
+function reduceTickets() {
     if (!currentQueryPhone) {
         showToast('请先查询用户');
         return;
     }
-    const amount = -(parseInt(document.getElementById('inputAmount').value) || 1);
-    const res = await api('/api/admin/tickets/add', 'POST', { phone: currentQueryPhone, count: amount });
-    if (res.success) {
-        showToast(`已扣减 ${-amount} 张券`);
+    const amount = parseInt(document.getElementById('inputAmount').value) || 1;
+    
+    if (appData.users[currentQueryPhone]) {
+        appData.users[currentQueryPhone].tickets = Math.max(0, appData.users[currentQueryPhone].tickets - amount);
+        saveData();
+        showToast(`已扣减 ${amount} 张券`);
         queryUser();
         refreshStats();
-    } else {
-        showToast(res.message || '操作失败');
     }
 }
 
-async function batchAddTickets() {
+function batchAddTickets() {
     if (!confirm('确定为所有用户发放1张抽奖券？')) return;
-    const res = await api('/api/admin/tickets/batch', 'POST', { count: 1 });
-    if (res.success) {
-        showToast(`已为 ${res.user_count} 位用户发放抽奖券`);
-        refreshStats();
-    } else {
-        showToast(res.message || '操作失败');
-    }
+    
+    Object.values(appData.users).forEach(u => {
+        u.tickets = (u.tickets || 0) + 1;
+    });
+    saveData();
+    showToast(`已为 ${Object.keys(appData.users).length} 位用户发放抽奖券`);
+    refreshStats();
 }
 
-async function exportData() {
-    const res = await api('/api/admin/export');
-    if (!res.success) {
-        showToast('导出失败');
-        return;
-    }
+function exportData() {
+    const dataStr = JSON.stringify(appData, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `盲盒数据_${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('数据已导出');
+}
+
+function importData() {
+    document.getElementById('importFile').click();
+}
+
+function handleImport(event) {
+    const file = event.target.files[0];
+    if (!file) return;
     
-    const users = Object.entries(res.data.users || {}).map(([phone, data]) => ({
-        手机号: phone,
-        抽奖券: data.tickets || 0,
-        注册时间: data.created_at || ''
-    }));
-    
-    if (!users.length) {
-        showToast('暂无数据');
-        return;
-    }
-    
-    const ws = XLSX.utils.json_to_sheet(users);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '用户数据');
-    XLSX.writeFile(wb, `盲盒数据_${new Date().toISOString().slice(0,10)}.xlsx`);
-    showToast(`已导出 ${users.length} 条记录`);
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const imported = JSON.parse(e.target.result);
+            if (imported.users && imported.prizes && imported.records) {
+                appData = imported;
+                saveData();
+                renderPrizeTable();
+                refreshStats();
+                showToast('数据已导入');
+            } else {
+                showToast('无效的数据格式');
+            }
+        } catch (err) {
+            showToast('导入失败：文件格式错误');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
 }
 
 function generateQRCode() {
